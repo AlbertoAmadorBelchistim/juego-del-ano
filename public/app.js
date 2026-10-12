@@ -1,0 +1,413 @@
+"use strict";
+(async () => {
+const getJSON = async u => { const r = await fetch(u, {cache: "no-cache"}); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); };
+const [GAMES, SNAP26, DATA, MAP, OTHER] = await Promise.all(["games","y2026","tga","map","other"].map(n => getJSON("data/" + n + ".json")));
+const HIST_YEARS = DATA.map(d=>d.year);
+const YEARS = [...HIST_YEARS, 2026];
+const AWK = [["TGA","TGA"],["DICE","DICE"],["GDC","GDC"],["BAFTA","BAFTA"],["Golden Joystick","Joystick"]];
+const GROUPS = ["Artesanía y dirección","Géneros","Indie, plataformas y servicio","Comunidad y extras","Esports y creadores","Honoríficos"];
+const PLATS = ["PC","PS5","PS4","Xbox Series","Xbox One","Switch 2","Switch"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/&/g,"and").replace(/\b(the|of)\b/g,"").replace(/\bii\b/g,"2").replace(/[^a-z0-9]/g,"");
+const fmtN = n => n>=1000 ? (n/1000).toFixed(n>=10000?0:1).replace(".",",")+"k" : String(n);
+const fmtBL = v => v.toFixed(2).replace(".",",");
+const fmtDate = iso => new Date(iso+"T12:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
+const tr = n => MAP[n] || [n,"Comunidad y extras"];
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d} }, set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} } };
+
+// Clasificador compartido con la página
+const KIND_OVERRIDE = {"Dead Space|2023": "remaster", "Demon's Souls": "remaster", "Resident Evil 2|2019": "remaster", "Resident Evil 4|2023": "remaster", "Shadow of the Colossus|2018": "remaster", "The Legend of Zelda: Link's Awakening": "remaster", "The Legend of Zelda: Majora's Mask 3D": "remaster", "Silent Hill 2|2024": "remaster", "Paper Mario: The Thousand-Year Door": "remaster", "Tony Hawk's Pro Skater 1+2": "remaster", "Metal Gear Solid Delta: Snake Eater": "remaster", "Final Fantasy XII: The Zodiac Age": "remaster", "Final Fantasy Tactics: The Ivalice Chronicles": "remaster", "Trails in the Sky 1st Chapter": "remaster", "Trails in the Sky 2nd Chapter": "remaster", "Pokémon Alpha Sapphire": "remaster", "Pokémon Omega Ruby": "remaster", "The Last of Us Part I": "remaster", "NieR Replicant ver.1.22474487139...": "remaster", "Final Fantasy VI|2022": "remaster", "Xenoblade Chronicles: Definitive Edition": "remaster", "Xenoblade Chronicles X: Definitive Edition": "remaster", "Mass Effect Legendary Edition": "remaster", "Batman: Return to Arkham - Arkham City": "remaster", "Witch on the Holy Night": "remaster", "The Stanley Parable: Ultra Deluxe": "remaster", "Final Fantasy VII Remake|2020": "remaster", "Halo: The Master Chief Collection": "remaster", "Uncharted: The Nathan Drake Collection": "remaster", "Uncharted: Legacy of Thieves Collection": "remaster", "BioShock: The Collection": "remaster", "Resident Evil|2014": "remaster", "Bayonetta 2|2018": "port", "Red Dead Redemption|2023": "port", "Indiana Jones and the Great Circle|2025": "port", "Mario Kart 8 Deluxe": "port", "Pikmin 3 Deluxe": "port", "Ultra Street Fighter IV": "port", "Dark Souls II: Scholar of the First Sin": "port", "Guacamelee! Super Turbo Championship Edition": "port", "Tetris Effect: Connected": "port", "Hatsune Miku: Project Diva Mega Mix+": "port", "The World Ends with You: Final Remix": "port", "Zero Escape: The Nonary Games": "port", "The Walking Dead: The Telltale Definitive Series": "port", "Super Smash Bros. Ultimate": "nuevo", "Shinobi: Art of Vengeance": "nuevo", "Shadow Generations": "nuevo", "Persona 3 Reload": "remaster", "The Witcher 3: Wild Hunt - Blood and Wine": "dlc", "The Witcher 3: Wild Hunt - Hearts of Stone": "dlc", "Monster Hunter: World - Iceborne": "dlc", "Granblue Fantasy: Relink - Endless Ragnarok": "dlc"};
+function kindOf(t,y){
+  const o = KIND_OVERRIDE[t+'|'+y] || KIND_OVERRIDE[t]; if (o) return o;
+  const s=t;
+  if (/Nintendo Switch 2 Edition|Complete Edition|Definitive Edition|Game of the Year Edition|Ultimate Edition|Director's Cut|Tarnished Edition|Special Edition|Enhanced Edition|Legendary Edition|Final Cut|Intergrade|Gold Edition|Deluxe Edition|Anniversary Edition|Arcade Edition|Eternal Collection|Ultimate Evil Edition|Become as Gods|End of YoRHa|20 Year Celebration|Collection|Trilogy|Pristine Cut|Enhanced$|\bVengeance\b|Ultimate$|Royal\b|Final Mix|Plus\b|\+ /i.test(s)) return "port";
+  if (/Remaster|Remake|Reload\b|Reroll|\bHD\b|\bR\b$|Resynced|Redux|Rebirth of|Retold|Reawakened/i.test(s)) return "remaster";
+  if (/: (Hearts of Stone|Blood and Wine|The Old Hunters|Left Behind|Phantom Liberty|Shadow of the Erdtree|Separate Ways|Iceborne|Sunbreak|Shadowbringers|Endwalker|Legion|Warlords of Draenor|Reaper of Souls|War of the Chosen|The Final Shape|Bubbly Basin|Torna|Future Redeemed|Afterbirth\+|Specter of Torment|King of Cards|Delicious Last Course)/i.test(s) || /Shadow of the Erdtree|Phantom Liberty|Delicious Last Course/i.test(s)) return "dlc";
+  return "nuevo";
+}
+
+const KIND_LBL={remaster:"Remake / remaster",port:"Port o edición",dlc:"Expansión"};
+let S = Object.assign({year:2025, tab:"rank", wc:40, wp:40, wa:20, cc:88, cp:4, f:"all", pl:[], inc:{remaster:true,dlc:true,port:false}}, store.get("goty-ui",{}));
+if(!S.inc||typeof S.inc!=="object") S.inc={remaster:true,dlc:true,port:false};
+if (!YEARS.includes(S.year)) S.year = 2025;
+if (!Array.isArray(S.pl)) S.pl = [];
+const ST = {};
+const FIS = {};   // id -> 'si' | 'no' (corrección manual compartida)          // id -> {estado, terminado, completo}
+/* sesión: ME = yo; VIEW = id del usuario cuya colección se mira; ST = mis marcas; VST = marcas del que miro */
+let ME = null, USERS = [], VIEW = null; const VST = {};
+let Y26 = {meta: SNAP26.meta, games: SNAP26.games, live:false};
+
+/* ---------- datos por año ---------- */
+function allGames(){ return [...GAMES, ...Y26.games.map(g=>({...g, y:2026}))].map(g=>({...g, k:kindOf(g.t,g.y)})); }
+const eligible = g => g.k==="nuevo" || S.inc[g.k] || hasAwStrict(g);
+function hasAwStrict(g){ return g.y!==2026 && Object.keys(g.aw||{}).length>0; }
+function byId(id){ return allGames().find(g=>g.id===id); }
+
+/* ---------- índice ---------- */
+function awPts(g){ let p=0; for(const [k] of AWK){ const s=g.aw[k]; if(!s) continue; p += k==="TGA" ? (s==="won"?10:3) : (s==="won"?5:1.5); } return p/30*100; }
+const BL_PRIOR=1000; const _blMean={};
+function blMean(y){ if(_blMean[y]!=null) return _blMean[y]; const v=allGames().filter(g=>g.y===y&&g.bl!=null); const n=v.reduce((a,g)=>a+g.bln,0); return _blMean[y]= n? v.reduce((a,g)=>a+g.bl*g.bln,0)/n : 4; }
+function blAdj(g){ if(g.bl==null) return null; const m=blMean(g.y); return (g.bln*g.bl + BL_PRIOR*m)/(g.bln+BL_PRIOR); }
+function index(g){
+  const parts=[]; if(g.mc!=null) parts.push([S.wc,g.mc]); if(g.bl!=null) parts.push([S.wp,blAdj(g)*20]); parts.push([S.wa,awPts(g)]);
+  const w=parts.reduce((a,[x])=>a+x,0); return w? parts.reduce((a,[x,v])=>a+x*v,0)/w : 0;
+}
+const passes = g => g.mc!=null && g.bl!=null && g.mc>=S.cc && g.bl>=S.cp-1e-9;
+const hasAw = g => Object.keys(g.aw).length>0;
+const wonAny = g => Object.values(g.aw).includes("won");
+const both = g => (g.mc!=null && g.bl!=null) ? (g.mc + g.bl*20)/2 : null;
+const st = id => ST[id] || {};
+const fisOf = g => FIS[g.id]==='none' ? null : (FIS[g.id] || g.fis || null);
+function fisChip(g){ const v=fisOf(g), man=!!FIS[g.id];
+  const lab = v==="si" ? "Edición física" : v==="no" ? "Solo digital" : "¿Edición física?";
+  const tip = man ? "Marcado a mano" + (g.fsrc?` · dato automático: ${g.fsrc}`:"") : g.fsrc ? `Fuente: ${g.fsrc}` : "Sin confirmar en Wikipedia ni Wikidata";
+  const cls = v==="si" ? "fis si" : v==="no" ? "fis no" : "fis";
+  return ME ? `<button class="${cls}" data-fis="${g.id}" title="${esc(tip)} · toca para cambiar">${lab}${man?" ✎":""}</button>` : `<span class="${cls}" title="${esc(tip)}">${lab}</span>`; }
+const onPlat = g => !S.pl.length || (g.pl||[]).some(p => S.pl.includes(p) || (S.pl.includes("Otras") && !PLATS.includes(p)));
+
+/* ---------- piezas ---------- */
+function spr(g){ if(!g||!g.sp) return ""; const [c,r,C,R]=g.sp; return `background-image:url(sprites/${g.y}.jpg);background-size:${C*100}% ${R*100}%;background-position:${C>1?c/(C-1)*100:0}% ${R>1?r/(R-1)*100:0}%`; }
+function coverStyle(g){ if(g&&g.img) return `background-image:url('${g.img}');background-size:cover;background-position:center`; return spr(g); }
+function thumb(g, cls="thumb"){ const s=coverStyle(g); return s ? `<div class="${cls}" role="img" aria-label="Carátula de ${esc(g.t)}" style="${s}"></div>` : `<div class="${cls}">${esc(((g&&g.t)||"?")[0])}</div>`; }
+function pips(g){ const lab26 = g.y===2026 ? (Y26.meta.awardLabels||{}) : {};
+  return `<span class="pips">${AWK.map(([k,lab])=>{ const s=g.aw[k]||""; const tip= lab26[k] && s ? lab26[k] : s==="won"?`Ganó: ${k}`:s==="nom"?`Nominado: ${k}`:`Sin nominación en ${k}`; return `<span class="pip ${s}" title="${esc(tip)}">${lab}</span>`; }).join("")}</span>`; }
+function scores(g){
+  const c = g.mc!=null ? `<span class="sc c${g.mc>=S.cc?" pass":""}" title="Metacritic${g.mcn?` · ${g.mcn} críticas`:""}">MC ${g.mc}</span>` : `<span class="sc na" title="Sin nota en Metacritic">MC —</span>`;
+  const p = g.bl!=null ? `<span class="sc p${g.bl>=S.cp-1e-9?" pass":""}" title="Backloggd · ${g.bln} votos · en el índice cuenta como ${fmtBL(blAdj(g))} (ajustada por número de votos)">BL ${fmtBL(g.bl)} <span style="opacity:.75">· ${fmtN(g.bln)}</span></span>` : `<span class="sc na" title="Sin nota en Backloggd">BL —</span>`;
+  return c+p;
+}
+function plats(g){ if(!g.pl||!g.pl.length) return ""; return `<span class="plats">${g.pl.map(p=>S.pl.includes(p)?`<b>${esc(p)}</b>`:esc(p)).join(" · ")}</span>`; }
+function link(g){ const u = g.bls?`https://backloggd.com/games/${g.bls}/`: g.mcs?`https://www.metacritic.com/game/${g.mcs}/`:null; return u?`<a href="${u}" target="_blank" rel="noopener">${esc(g.t)}</a>`:esc(g.t); }
+const VIA = {aw:"premios",mc:"top Metacritic",bl:"top Backloggd"};
+function ownBtns(g){ if(!ME) return ""; const s=st(g.id);
+  return `<div class="own">
+    <button data-own="tengo" data-id="${g.id}" aria-pressed="${s.estado==="tengo"}">Tengo</button>
+    <button data-own="quiero" data-id="${g.id}" aria-pressed="${s.estado==="quiero"}">Quiero</button>
+    <button data-own="terminado" data-id="${g.id}" aria-pressed="${!!s.terminado}">Terminado</button>
+    <button data-own="completo" data-id="${g.id}" aria-pressed="${!!s.completo}">100%</button></div>`; }
+
+/* ---------- ranking ---------- */
+function yearGames(y){ return allGames().filter(g=>g.y===y && eligible(g)).map(g=>({...g, ix:index(g)})).sort((a,b)=>b.ix-a.ix); }
+function filt(g){
+  const s=st(g.id);
+  switch(S.f){ case "cut": return passes(g); case "aw": return hasAw(g);
+    case "tengo": return s.estado==="tengo"; case "quiero": return s.estado==="quiero";
+    case "fis": return fisOf(g)==="si";
+    case "pend": return s.estado==="tengo" && !s.terminado; case "terminado": return !!s.terminado; case "completo": return !!s.completo; }
+  return true;
+}
+
+function renderBanner26(){
+  const b=$("banner26"); if(S.year!==2026){ b.hidden=true; return; }
+  const m=Y26.meta||{}; b.hidden=false;
+  const up=(m.upcoming||[]).map(u=>`<li><strong>${esc(u.t)}</strong> · ${u.date?fmtDate(u.date):"sin fecha"}${u.note?` — ${esc(u.note)}`:""}</li>`).join("");
+  b.innerHTML = `<div class="eyebrow">2026 en curso</div>
+    <ul>${(m.notes||[]).map(n=>`<li>${esc(n)}</li>`).join("")}</ul>
+    ${up?`<div><strong style="font-size:13px">Por salir antes de la gala</strong><ul>${up}</ul></div>`:""}
+    <div class="upd">Datos del ${m.updated?fmtDate(m.updated):"—"} · se actualiza cada lunes</div>`;
+}
+
+function renderRank(){
+  renderBanner26();
+  const all = yearGames(S.year);
+  if (!all.length){ $("podium").innerHTML=`<p class="empty">Aún no hay candidatos cargados para ${S.year}.</p>`; $("rank").innerHTML=""; $("scatter").innerHTML=""; $("forgot").innerHTML=""; $("over").innerHTML=""; return; }
+  const d = DATA.find(x=>x.year===S.year);
+  const tga = d ? d.categories[0].winner : null;
+  const tgaG = all.find(g=>g.aw.TGA==="won");
+  const top = all[0];
+  const tgaPos = tgaG ? all.indexOf(tgaG)+1 : null;
+  const verdict = !d ? `The Game Awards 2026 se celebra el 10 de diciembre; este es el favorito con los datos de hoy.`
+    : (tgaG && top===tgaG) ? `Coincide con el Juego del Año de The Game Awards.` : `The Game Awards eligió <strong>${esc(tga)}</strong>${tgaPos?`, que queda <strong>${tgaPos}º</strong> con estos pesos`:""}.`;
+  $("podium").innerHTML = `<div class="podium">
+    <div class="cv" role="img" aria-label="Carátula de ${esc(top.t)}" style="${coverStyle(top)}"></div>
+    <div class="body">
+      <div class="eyebrow">Nº 1 por consenso · ${S.year}${S.year===2026?" (provisional)":""}</div>
+      <h2>${esc(top.t)}</h2>
+      <div class="statrow">
+        <div class="stat"><b>${top.ix.toFixed(1).replace(".",",")}</b><span>Índice</span></div>
+        <div class="stat"><b style="color:var(--crit)">${top.mc??"—"}</b><span>Metacritic</span></div>
+        <div class="stat"><b style="color:var(--play)">${top.bl!=null?fmtBL(top.bl):"—"}</b><span>Backloggd</span></div>
+        <div class="stat"><b>${Object.values(top.aw).filter(x=>x==="won").length}</b><span>Premios gordos</span></div>
+      </div>
+      <div class="verdict">${verdict} ${all.length} candidatos; ${all.filter(passes).length} superan ambos cortes.</div>
+      <div>${pips(top)}</div>${top.pl?`<div>${plats(top)}</div>`:""}
+    </div></div>`;
+
+  const list = all.filter(g=>filt(g) && onPlat(g));
+  $("rank").innerHTML = list.length ? list.map(g=>{
+    const r = all.indexOf(g)+1;
+    return `<div class="row${r<=3?" top":""}" id="g-${g.id}">
+      <div class="n">${r}</div>${thumb(g)}
+      <div class="info"><div class="t">${link(g)}</div>
+        <div class="meta">${scores(g)} ${pips(g)}</div>
+        ${plats(g)}
+        <div class="meta">${fisChip(g)}${g.k!=="nuevo"?`<span class="pip nom">${KIND_LBL[g.k]}</span>`:""}</div>
+        <div class="via">Entra por: ${g.via.map(v=>VIA[v]).join(" · ")}${g.date&&g.y===2026?` · salió el ${fmtDate(g.date)}`:""}</div></div>
+      <div class="right"><div class="idx">${g.ix.toFixed(1).replace(".",",")}</div><div class="bar"><i style="width:${Math.max(0,Math.min(100,g.ix))}%"></i></div>${ownBtns(g)}</div>
+    </div>`; }).join("") : `<p class="empty">Ningún juego de ${S.year} cumple este filtro${S.pl.length?" en las plataformas elegidas":""}. Prueba a quitar filtros o bajar las notas de corte.</p>`;
+
+  scatter(all.filter(onPlat));
+  const sc = all.filter(g=>both(g)!=null).map(both).sort((a,b)=>a-b);
+  const q75 = sc[Math.floor(sc.length*0.7)] ?? 0, med = sc[Math.floor(sc.length/2)] ?? 0;
+  const forgot = all.filter(g=>!hasAw(g) && both(g)!=null && both(g)>=q75 && onPlat(g)).sort((a,b)=>both(b)-both(a)).slice(0,6);
+  const over = all.filter(g=>wonAny(g) && both(g)!=null && both(g)<med && onPlat(g)).sort((a,b)=>both(a)-both(b)).slice(0,6);
+  $("forgot").innerHTML = mini(forgot);
+  $("over").innerHTML = mini(over, S.year===2026 ? "Sin ganadores todavía en 2026." : "Ninguno este año.");
+}
+function mini(arr, emptyMsg="Ninguno este año."){ return arr.length ? arr.map(g=>`<li><button data-jump="${g.id}">${esc(g.t)}</button><span class="sc c" style="border:none;padding:0">${g.mc??"—"}</span><span class="sc p" style="border:none;padding:0">${g.bl!=null?fmtBL(g.bl):"—"}</span></li>`).join("") : `<li class="empty">${emptyMsg}</li>`; }
+
+function scatter(all){
+  const pts = all.filter(g=>g.mc!=null && g.bl!=null);
+  if (!pts.length){ $("scatter").innerHTML=`<p class="empty">Sin juegos con ambas notas.</p>`; return; }
+  const W=360,H=300,L=34,R=10,T=10,B=28;
+  const xs=pts.map(g=>g.mc), ys=pts.map(g=>g.bl);
+  const x0=Math.min(78,...xs)-1, x1=Math.max(...xs,96)+1, y0=Math.min(3.6,...ys)-.05, y1=Math.min(5,Math.max(...ys,4.6)+.05);
+  const X=v=>L+(v-x0)/(x1-x0)*(W-L-R), Y=v=>H-B-(v-y0)/(y1-y0)*(H-T-B);
+  let g=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Metacritic frente a Backloggd, ${S.year}">`;
+  for(let v=Math.ceil(x0/5)*5; v<=x1; v+=5) g+=`<line class="ax" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${H-B}"/><text x="${X(v)}" y="${H-B+14}" text-anchor="middle">${v}</text>`;
+  for(let v=Math.ceil(y0*4)/4; v<=y1+1e-9; v+=.25) g+=`<line class="ax" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-5}" y="${Y(v)+3}" text-anchor="end">${v.toFixed(2).replace(".",",")}</text>`;
+  g+=`<text x="${W-R}" y="${H-3}" text-anchor="end">Metacritic →</text><text x="${L}" y="${T-1}" text-anchor="start" style="fill:var(--play)">↑ Backloggd</text>`;
+  if (S.cc>=x0 && S.cc<=x1) g+=`<line class="cut" x1="${X(S.cc)}" x2="${X(S.cc)}" y1="${T}" y2="${H-B}"/>`;
+  if (S.cp>=y0 && S.cp<=y1) g+=`<line class="cut" x1="${L}" x2="${W-R}" y1="${Y(S.cp)}" y2="${Y(S.cp)}"/>`;
+  const order = [...pts].sort((a,b)=>(a.aw.TGA==="won")-(b.aw.TGA==="won") || wonAny(a)-wonAny(b));
+  for(const p of order){
+    const tw=p.aw.TGA==="won", w=wonAny(p), n=hasAw(p);
+    const fill = tw?"var(--gold)": w?"var(--fg)":"var(--surface)", stroke = tw||w?"var(--surface)": n?"var(--fg)":"var(--faint)";
+    g+=`<circle cx="${X(p.mc)}" cy="${Y(p.bl)}" r="${tw?7:5.5}" fill="${fill}" stroke="${stroke}" stroke-width="2" data-id="${p.id}" style="cursor:pointer"/>`;
+  }
+  const lab = all.slice(0,3).filter(p=>p.mc!=null&&p.bl!=null);
+  for(const p of lab){ const right = X(p.mc) < W-110; g+=`<text class="lbl" x="${X(p.mc)+(right?9:-9)}" y="${Y(p.bl)+3.5}" text-anchor="${right?"start":"end"}">${esc(p.t.length>24?p.t.slice(0,22)+"…":p.t)}</text>`; }
+  $("scatter").innerHTML = g+`</svg>`;
+}
+
+/* ---------- colección ---------- */
+function viewSel(){
+  if(!ME) return "";
+  const others = USERS.filter(u=>u.id!==ME.id);
+  const opts = [`<option value="${ME.id}"${VIEW===ME.id?" selected":""}>Mi colección (${esc(ME.name)})</option>`, ...others.map(u=>`<option value="${u.id}"${u.id===VIEW?" selected":""}>${esc(u.name)} · ${u.n} marcados</option>`)].join("");
+  return `<div class="viewbar">
+    <label>Ver colección de <select id="viewSel">${opts}</select></label>
+    <label class="me">Tu nombre <input id="meName" value="${esc(ME.name)}" maxlength="40" autocomplete="nickname"></label>
+    <label class="me chk"><input type="checkbox" id="meShared" ${ME.shared?"checked":""}> Los demás pueden ver mi colección</label>
+  </div>`;
+}
+function compareBlock(mine, theirs, name){
+  const G = allGames().map(g=>({...g, ix:index(g)}));
+  const m = id=>mine[id]||{}, t = id=>theirs[id]||{};
+  const L = f => G.filter(g=>f(g.id)).sort((a,b)=>b.ix-a.ix);
+  const both = L(id=>m(id).terminado && t(id).terminado);
+  const onlyMe = L(id=>m(id).terminado && !t(id).terminado);
+  const onlyThem = L(id=>t(id).terminado && !m(id).terminado);
+  const swap = L(id=>t(id).terminado && m(id).estado==="tengo" && !m(id).terminado);
+  const li = arr => arr.length ? `<ul class="mini">${arr.slice(0,40).map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}${arr.length>40?`<li class="muted">y ${arr.length-40} más</li>`:""}</ul>` : `<p class="empty">Ninguno.</p>`;
+  return `<div class="card"><h3>Tú frente a ${esc(name)}</h3>
+    <div class="kpis" style="margin:8px 0 14px">
+      <div class="kpi"><b style="color:var(--crit)">${both.length}</b><span>Terminados por los dos</span></div>
+      <div class="kpi"><b>${onlyMe.length}</b><span>Solo tú</span></div>
+      <div class="kpi"><b>${onlyThem.length}</b><span>Solo ${esc(name)}</span></div>
+    </div>
+    <div class="cmpgrid">
+      <div><h4>Lo ha terminado ${esc(name)} y tú lo tienes pendiente</h4>${li(swap)}</div>
+      <div><h4>Solo ${esc(name)}</h4>${li(onlyThem)}</div>
+      <div><h4>Solo tú</h4>${li(onlyMe)}</div>
+      <div><h4>Los dos</h4>${li(both)}</div>
+    </div></div>`;
+}
+function renderCol(){
+  const out=$("colOut");
+  if(!ME){ out.innerHTML=`<p class="empty">No se ha podido identificar tu sesión, así que la colección no está disponible. Recarga la página; si sigue igual, vuelve a entrar con tu correo.</p>`; return; }
+  const own = VIEW===ME.id; const ST_ = own ? ST : VST; const st = id => ST_[id] || {};
+  const who = own ? null : (USERS.find(u=>u.id===VIEW)||{name:"?"}).name;
+  $("colTitle").textContent = own ? "Mi colección" : "Colección de " + who;
+  const G = allGames().map(g=>({...g, ix:index(g)}));
+  const ids = Object.keys(ST_).filter(id=>byId(id));
+  const pick = f => G.filter(g=>f(st(g.id)));
+  const tengo=pick(s=>s.estado==="tengo"), quiero=pick(s=>s.estado==="quiero"), term=pick(s=>s.terminado), comp=pick(s=>s.completo);
+  const pend = tengo.filter(g=>!st(g.id).terminado).sort((a,b)=>b.ix-a.ix);
+  if(!ids.length){ out.innerHTML= viewSel() + (own ? `<p class="empty">Todavía no hay nada marcado. En el ranking, cada juego tiene botones Tengo, Quiero, Terminado y 100%.</p>` : `<p class="empty">${esc(who)} todavía no ha marcado nada.</p>`); return; }
+  const pct = (a,b)=> b? Math.round(a/b*100)+"%" : "—";
+  const avg = (arr,f)=>{ const v=arr.map(f).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
+  const kpis = `<div class="kpis">
+    <div class="kpi"><b>${tengo.length}</b><span>Tengo</span></div>
+    <div class="kpi"><b>${quiero.length}</b><span>Quiero</span></div>
+    <div class="kpi"><b style="color:var(--crit)">${term.length}</b><span>Terminados</span></div>
+    <div class="kpi"><b style="color:var(--gold)">${comp.length}</b><span>Al 100%</span></div>
+    <div class="kpi"><b>${pct(tengo.filter(g=>st(g.id).terminado).length, tengo.length)}</b><span>De lo que tengo, terminado</span></div>
+    <div class="kpi"><b>${pct(comp.length, term.length)}</b><span>De lo terminado, al 100%</span></div>
+  </div>`;
+  // por año
+  const rows = YEARS.slice().reverse().map(y=>{
+    const ys=G.filter(g=>g.y===y).sort((a,b)=>b.ix-a.ix); const top10=ys.slice(0,10).map(g=>g.id);
+    const t=ys.filter(g=>st(g.id).terminado).length, c=ys.filter(g=>st(g.id).completo).length, o=ys.filter(g=>st(g.id).estado==="tengo").length;
+    const t10=top10.filter(id=>st(id).terminado).length;
+    return {y,n:ys.length,t,c,o,t10};
+  });
+  const maxN=Math.max(...rows.map(r=>r.n),1);
+  const bars = `<div class="ybars">${rows.map(r=>`<div class="ybar" title="${r.y}: ${r.t} terminados, ${r.c} al 100%, ${r.o} en la estantería, de ${r.n} candidatos">
+      <span class="y">${r.y}</span>
+      <span class="track"><i style="width:${r.n/maxN*100}%;background:var(--surface);border:1px solid var(--line)"></i><i style="width:${r.t/maxN*100}%;background:var(--crit)"></i><i style="width:${r.c/maxN*100}%;background:var(--gold)"></i></span>
+      <span class="n">${r.t} / ${r.n} · top10 ${r.t10}</span></div>`).join("")}</div>
+    <div class="legend"><span><i style="background:var(--crit)"></i>Terminados</span><span><i style="background:var(--gold)"></i>Al 100%</span><span><i style="border:1px solid var(--line)"></i>Candidatos del año</span><span>“top10” = cuántos del top 10 de consenso has terminado</span></div>`;
+  // plataformas
+  const pc={}; term.forEach(g=>(g.pl||[]).forEach(p=>pc[p]=(pc[p]||0)+1));
+  const ptab = Object.keys(pc).length ? `<table class="ptable"><thead><tr><th>Plataforma</th><th style="text-align:right">Terminados disponibles</th></tr></thead><tbody>${Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`<tr><td>${esc(p)}</td><td class="n">${n}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">Marca juegos como terminados para ver el reparto por plataforma.</p>`;
+  const qual = `<div class="tw"><table class="ptable"><thead><tr><th>Grupo</th><th style="text-align:right">Juegos</th><th style="text-align:right">Metacritic</th><th style="text-align:right">Backloggd</th><th style="text-align:right">Índice</th></tr></thead><tbody>${
+    [["Terminados",term],["Al 100%",comp],["Tengo sin terminar",pend],["Quiero",quiero]].map(([n,a])=>`<tr><td>${n}</td><td class="n">${a.length}</td><td class="n">${avg(a,g=>g.mc)?.toFixed(1).replace(".",",")??"—"}</td><td class="n">${(v=>v!=null?fmtBL(v):"—")(avg(a,g=>g.bl))}</td><td class="n">${avg(a,g=>g.ix)?.toFixed(1).replace(".",",")??"—"}</td></tr>`).join("")}</tbody></table></div>`;
+  const li = arr => arr.length ? `<ul class="mini">${arr.map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}</ul>` : `<p class="empty">Nada aquí todavía.</p>`;
+  out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(ST, VST, who)}
+    <div class="statgrid">
+      <div class="card"><h3>Por año</h3>${bars}</div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card"><h3>Nota media de cada grupo</h3>${qual}</div>
+        <div class="card"><h3>Plataformas</h3><p>En qué plataformas están disponibles los juegos terminados.</p>${ptab}</div>
+      </div>
+    </div>
+    <div class="statgrid">
+      <div class="card"><h3>Pendientes por prioridad</h3><p>Lo que está en la estantería sin terminar, ordenado por el índice de consenso con tus pesos.</p>${li(pend)}</div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="card"><h3>Al 100%</h3>${li(comp.sort((a,b)=>b.ix-a.ix))}</div>
+        <div class="card"><h3>Quiero</h3>${li(quiero.sort((a,b)=>b.ix-a.ix))}</div>
+      </div>
+    </div>`;
+}
+
+/* ---------- TGA ---------- */
+const byTitle = {}; GAMES.forEach(g=>{ (byTitle[g.y+"|"+norm(g.t)] ||= g); (g.alias||[]).forEach(a=>byTitle[g.y+"|"+norm(a)] ||= g); });
+const findG = (y,t) => byTitle[y+"|"+norm(t)] || null;
+function sMini(g){ return g ? `<span style="display:inline-flex;gap:4px">${g.mc!=null?`<span class="sc c" style="border:none;padding:0">${g.mc}</span>`:""}${g.bl!=null?`<span class="sc p" style="border:none;padding:0">${fmtBL(g.bl)}</span>`:""}</span>` : ""; }
+function renderTGA(){
+  const yr = HIST_YEARS.includes(S.year) ? S.year : 2025;
+  $("wall").innerHTML = [...DATA].reverse().map(d=>{ const c=d.categories[0]; const g=findG(d.year,c.winner);
+    return `<button class="goty${d.year===yr?" sel":""}" data-y="${d.year}"><div class="top">${thumb(g||{t:c.winner})}<div><div class="yr">${d.year}</div><div class="win">${esc(c.winner)}</div>${sMini(g)}</div></div>
+      <ul>${c.nominees.map(n=>`<li><span>${esc(n)}</span>${sMini(findG(d.year,n))}</li>`).join("")}</ul></button>`; }).join("");
+  const q=$("q").value.trim().toLowerCase();
+  if (q.length>=2) return tgaSearch(q);
+  const d=DATA.find(x=>x.year===yr); const byG={};
+  d.categories.slice(1).forEach(c=>{ const [es,grp]=tr(c.name); (byG[grp] ||= []).push({...c,es}); });
+  $("tgaYearLbl").textContent = `Gala ${d.year} · ${fmtDate(d.date)}${d.venue?" · "+d.venue:""} · más premiado: ${d.mostWins.game} (${d.mostWins.count})`;
+  $("tgaOut").innerHTML = GROUPS.filter(k=>byG[k]).map(k=>`<div class="group"><h3>${k}</h3><div class="cats">${byG[k].map(c=>`<div class="cat"><div class="n">${esc(c.es)}</div><div class="w">${esc(c.winner)}</div>${c.nominees.length?`<ul>${c.nominees.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:""}</div>`).join("")}</div></div>`).join("");
+}
+function hl(s,q){ const i=s.toLowerCase().indexOf(q); return i<0?esc(s):esc(s.slice(0,i))+"<mark>"+esc(s.slice(i,i+q.length))+"</mark>"+esc(s.slice(i+q.length)); }
+function tgaSearch(q){
+  const rows=[]; DATA.forEach(d=>d.categories.forEach((c,i)=>{ const cat=i===0?"Juego del Año":tr(c.name)[0];
+    if(c.winner.toLowerCase().includes(q)) rows.push({y:d.year,cat,who:c.winner,win:1});
+    c.nominees.forEach(n=>{ if(n.toLowerCase().includes(q)) rows.push({y:d.year,cat,who:n,win:0}); }); }));
+  rows.sort((a,b)=>b.y-a.y||b.win-a.win);
+  $("tgaYearLbl").textContent = `${rows.length} nominaciones · ${rows.filter(r=>r.win).length} premios`;
+  $("tgaOut").innerHTML = rows.length ? `<div style="display:flex;flex-direction:column;gap:6px">${rows.map(r=>`<div class="res"><span class="y">${r.y}</span><span><strong>${esc(r.cat)}</strong> ${r.win?`<span class="pip won">GANADOR</span>`:`<span class="pip nom">nominado</span>`}<br>${hl(r.who,q)}</span></div>`).join("")}</div>` : `<p class="empty">Nada coincide con “${esc(q)}”. Prueba con parte del título, por ejemplo “zelda” o “souls”.</p>`;
+}
+
+/* ---------- comparativa ---------- */
+function renderCmp(){
+  const cols=[["DICE"],["GDC"],["BAFTA"],["Golden Joystick"]];
+  const head=`<tr><th>Año</th><th>The Game Awards</th>${cols.map(([k])=>`<th>${k}</th>`).join("")}<th>Nº1 Metacritic</th><th>Nº1 Backloggd</th><th>Coinciden</th></tr>`;
+  const rows=[...DATA].reverse().map(d=>{ const w=d.categories[0].winner, o=OTHER[d.year]||{}; let c=0, n=0;
+    const cell = name => { n++; const s=norm(name)===norm(w); if(s)c++; return `<td class="${s?"same":""}">${esc(name)}</td>`; };
+    const ys=allGames().filter(g=>g.y===d.year && (g.k==="nuevo"||g.k==="remaster"||g.k==="dlc"));
+    const mcTop=[...ys].filter(g=>g.mc!=null && g.via.includes("mc")).sort((a,b)=>b.mc-a.mc||(b.mcn||0)-(a.mcn||0))[0];
+    const blTop=[...ys].filter(g=>g.bl!=null && g.via.includes("bl")).sort((a,b)=>b.bl-a.bl)[0];
+    const tg=findG(d.year,w); const sameG = g => g && tg && g.id===tg.id;
+    const extra = (g,isMc) => { n++; if(sameG(g)) c++; return g?`<td class="${sameG(g)?"same":""}">${esc(g.t)} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${isMc?g.mc:fmtBL(g.bl)}</span></td>`:`<td class="k">—</td>`; };
+    return `<tr><td class="y">${d.year}</td><td><strong>${esc(w)}</strong></td>${cols.map(([k])=>o[k]?cell(o[k].winner):`<td class="k">—</td>`).join("")}${extra(mcTop,true)}${extra(blTop,false)}<td class="k">${c} de ${n}</td></tr>`; }).join("");
+  $("cmpT").innerHTML=`<thead>${head}</thead><tbody>${rows}</tbody>`;
+}
+
+/* ---------- controles ---------- */
+function syncControls(){
+  for (const k of ["wc","wp","wa","cc","cp"]) $(k).value=S[k];
+  $("owc").textContent=S.wc; $("owp").textContent=S.wp; $("owa").textContent=S.wa; $("occ").textContent=S.cc; $("ocp").textContent=(+S.cp).toFixed(2).replace(".",",");
+  document.querySelectorAll("#show .chip").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.f===S.f); if(["tengo","quiero","pend","terminado","completo"].includes(b.dataset.f)) b.hidden=!ME; });
+  $("show").querySelector(".sep").hidden=!ME;
+  $("plats").innerHTML = [...PLATS,"Otras"].map(p=>`<button class="chip" data-pl="${p}" aria-pressed="${S.pl.includes(p)}">${p}</button>`).join("") + (S.pl.length?`<button class="chip" data-pl="__clear">Quitar filtro</button>`:"");
+  $("inc").innerHTML = [["remaster","Remakes y remasters"],["dlc","Expansiones"],["port","Ports y ediciones"]].map(([k,l])=>`<button class="chip" data-inc="${k}" aria-pressed="${!!S.inc[k]}">${l}</button>`).join("");
+  $("plHint").textContent = S.pl.length ? "(cualquiera de las elegidas)" : "";
+  const tabKey = S.tab==="rank" && S.year===2026 ? "y26" : S.tab;
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.tab===tabKey));
+  ["rank","col","tga","cmp"].forEach(t=>$("tab-"+t).hidden = t!==S.tab);
+  $("years").hidden = !(S.tab==="rank" || S.tab==="tga");
+  const ys = S.tab==="tga" ? HIST_YEARS : YEARS;
+  const cur = S.tab==="tga" && !HIST_YEARS.includes(S.year) ? 2025 : S.year;
+  $("years").innerHTML = ys.map(y=>`<button data-y="${y}" aria-pressed="${y===cur}">${y}</button>`).join("");
+}
+function render(){ store.set("goty-ui",S); syncControls(); if(S.tab==="rank") renderRank(); if(S.tab==="col") renderCol(); if(S.tab==="tga") renderTGA(); if(S.tab==="cmp") renderCmp(); }
+
+for (const k of ["wc","wp","wa","cc","cp"]) $(k).addEventListener("input", e=>{ S[k]=+e.target.value; render(); });
+document.addEventListener("click", e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  if (t.dataset.tab){ if(t.dataset.tab==="y26"){ S.tab="rank"; S.year=2026; } else { if(t.dataset.tab==="rank" && S.year===2026) S.year=2025; S.tab=t.dataset.tab; } render(); scrollTo({top:0}); }
+  else if (t.dataset.y && (t.closest("#years")||t.classList.contains("goty"))){ S.year=+t.dataset.y; render(); }
+  else if (t.dataset.f){ S.f=t.dataset.f; render(); }
+  else if (t.dataset.inc){ S.inc={...S.inc,[t.dataset.inc]:!S.inc[t.dataset.inc]}; render(); }
+  else if (t.dataset.pl){ const p=t.dataset.pl; S.pl = p==="__clear" ? [] : S.pl.includes(p) ? S.pl.filter(x=>x!==p) : [...S.pl,p]; render(); }
+  else if (t.dataset.jump) jump(t.dataset.jump);
+  else if (t.dataset.goto){ const g=byId(t.dataset.goto); if(g){ S.tab="rank"; S.year=g.y; S.f="all"; S.pl=[]; render(); jump(g.id); } }
+  else if (t.dataset.own) toggleOwn(t.dataset.id, t.dataset.own);
+  else if (t.dataset.fis) cycleFis(t.dataset.fis);
+});
+function jump(id){ if(S.f!=="all"||S.pl.length){S.f="all"; S.pl=[]; render();} const el=$("g-"+id); if(!el) return; el.scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1600); }
+$("q").addEventListener("input", ()=>renderTGA());
+
+const tip=$("tip");
+$("scatter").addEventListener("mousemove", e=>{ const c=e.target.closest("circle"); if(!c){tip.hidden=true;return;} const g=byId(c.dataset.id); if(!g) return;
+  tip.innerHTML=`<strong>${esc(g.t)}</strong><br>Metacritic ${g.mc} · Backloggd ${fmtBL(g.bl)} (${fmtN(g.bln)} votos)${hasAw(g)?`<br>${AWK.filter(([k])=>g.aw[k]).map(([k])=>(g.aw[k]==="won"?"★ ":"")+k).join(", ")}`:""}${g.pl?`<br>${g.pl.join(" · ")}`:""}`;
+  tip.hidden=false; tip.style.left=Math.min(e.clientX+12, innerWidth-250)+"px"; tip.style.top=(e.clientY+12)+"px"; });
+$("scatter").addEventListener("mouseleave", ()=>tip.hidden=true);
+$("scatter").addEventListener("click", e=>{ const c=e.target.closest("circle"); if(c) jump(c.dataset.id); });
+
+/* ---------- API (Cloudflare Pages Functions + D1) ---------- */
+async function api(path, opt={}){
+  const r = await fetch("/api/"+path, {credentials:"same-origin", headers:{"content-type":"application/json"}, ...opt});
+  if (!r.ok) throw new Error(path+" "+r.status);
+  return r.json();
+}
+const fillMarks = (dst, src) => { for(const k in dst) delete dst[k]; for(const [k,v] of Object.entries(src||{})) dst[k]={estado:v.estado||null, terminado:!!v.terminado, completo:!!v.completo}; };
+async function loadState(){
+  const d = await api("state");
+  ME = d.me; USERS = d.users||[]; if (VIEW==null || !USERS.some(u=>u.id===VIEW)) VIEW = ME.id;
+  fillMarks(ST, d.marks);
+  for (const k in FIS) delete FIS[k]; Object.assign(FIS, d.fisica||{});
+  if (VIEW!==ME.id) await loadView(VIEW, false);
+  render();
+}
+async function loadView(id, draw=true){
+  VIEW = id;
+  if (id===ME.id) fillMarks(VST, {}); else { try { fillMarks(VST, (await api("marks?u="+id)).marks); } catch(e){ fillMarks(VST, {}); } }
+  if (draw) render();
+}
+async function cycleFis(id){
+  if(!ME) return; const g=byId(id); if(!g) return;
+  const auto=g.fis||null, cur=fisOf(g);
+  const next = cur==="si" ? "no" : cur==="no" ? null : "si";   // si -> solo digital -> sin dato -> si
+  const prev=FIS[id];
+  if (next===auto || next===null){ delete FIS[id]; } else FIS[id]=next;
+  if (next===null && auto){ FIS[id]="none"; }
+  render();
+  try{ await api("fisica/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({v:FIS[id]||null})}); }
+  catch(e){ if(prev) FIS[id]=prev; else delete FIS[id]; render(); toast("No se pudo guardar"); }
+}
+async function toggleOwn(id, kind){
+  if(!ME) return;
+  const prev = {...st(id)}; const s = {...prev};
+  if (kind==="tengo"||kind==="quiero") s.estado = s.estado===kind ? null : kind;
+  if (kind==="terminado"){ s.terminado = !s.terminado; if(!s.terminado) s.completo=false; }
+  if (kind==="completo"){ s.completo = !s.completo; if(s.completo) s.terminado=true; }
+  const empty = !s.estado && !s.terminado && !s.completo;
+  if (empty) delete ST[id]; else ST[id]=s; render();
+  try { await api("marks/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo})}); }
+  catch(err){ if(Object.keys(prev).length) ST[id]=prev; else delete ST[id]; render(); toast("No se pudo guardar"); }
+}
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, 3000); }
+document.addEventListener("change", async e=>{
+  if (e.target.id==="viewSel") loadView(+e.target.value);
+  else if (e.target.id==="meName" || e.target.id==="meShared"){
+    const name = $("meName").value.trim() || ME.name, shared = $("meShared").checked;
+    try { ME = (await api("me", {method:"PUT", body:JSON.stringify({name, shared})})).me; const u=USERS.find(u=>u.id===ME.id); if(u) u.name=ME.name; render(); toast("Guardado"); }
+    catch(err){ toast("No se pudo guardar"); }
+  }
+});
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && ME) loadState().catch(()=>{}); });
+$("boot").hidden = true;
+render();
+try { await loadState(); } catch(e){ console.warn("Sin sesión:", e.message); }
+})().catch(e => { document.getElementById("boot").textContent = "No se pudieron cargar los datos: " + e.message; });

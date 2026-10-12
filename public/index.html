@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juego del Año 2014–2026</title>
+<meta name="description" content="Los mejores juegos de cada año según la crítica, los jugadores y los premios, con tu colección.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M8 4h16v6a8 8 0 0 1-16 0z' fill='%23e4b75a'/><rect x='14' y='17' width='4' height='6' fill='%23e4b75a'/><rect x='9' y='24' width='14' height='4' rx='1' fill='%23e4b75a'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: selector de año fijo arriba; por año, un "podio" con el nº1 de consenso, luego ranking + gráfico crítica/jugadores; pestañas secundarias para el palmarés TGA y la comparativa de premios */
+:root{
+  --bg:#f2f3f6; --surface:#ffffff; --fg:#14161d; --muted:#5b6274; --faint:#8a90a0; --line:#d9dce4;
+  --gold:#9c6c12; --gold-soft:#f5ead2; --gold-ink:#6e4b08;
+  --crit:#2f5bd3; --play:#c2410c;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1015; --surface:#171a22; --fg:#eceef3; --muted:#9aa1b2; --faint:#6c7385; --line:#2a2f3b;
+  --gold:#e4b75a; --gold-soft:#2b2414; --gold-ink:#f0cd84; --crit:#7f9cf5; --play:#f08a5d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1015; --surface:#171a22; --fg:#eceef3; --muted:#9aa1b2; --faint:#6c7385; --line:#2a2f3b;
+  --gold:#e4b75a; --gold-soft:#2b2414; --gold-ink:#f0cd84; --crit:#7f9cf5; --play:#f08a5d; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:36px 64px;padding-inline:20px;display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.01em}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.muted{color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px;max-width:820px}
+header h1{font-size:clamp(42px,7.5vw,84px);font-weight:900;line-height:.9;text-transform:uppercase}
+header h1 span{color:var(--gold)}
+header p{margin:0;color:var(--muted);max-width:66ch}
+
+/* barra fija */
+.sticky{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.tabs,.years{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button,.years button,.chip{font-family:var(--mono);font-size:13px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
+.tabs button{font-family:var(--display);font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;padding:4px 12px}
+.tabs button[aria-pressed="true"],.years button[aria-pressed="true"],.chip[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.years button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* podio */
+.podium{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;background:var(--gold-soft);border-radius:6px;padding:22px;align-items:start}
+.podium .cv{width:170px;aspect-ratio:3/4;border-radius:4px;overflow:hidden;background:var(--line);box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:100%}
+.podium .cv img{width:100%;height:100%;object-fit:cover;display:block}
+.podium h2{font-size:clamp(34px,5.5vw,60px);font-weight:900;text-transform:uppercase;line-height:.92}
+.podium .body{display:flex;flex-direction:column;gap:12px;min-width:0}
+.statrow{display:flex;flex-wrap:wrap;gap:18px}
+.stat{display:flex;flex-direction:column}
+.stat b{font-family:var(--display);font-size:34px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.verdict{font-size:14px;color:var(--fg);max-width:70ch}
+.verdict strong{color:var(--gold-ink)}
+
+/* controles */
+.controls{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:end;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1 1 150px}
+.ctl label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ctl label output{color:var(--fg)}
+.ctl input[type=range]{width:100%;accent-color:var(--gold)}
+.ctl .chips{display:flex;flex-wrap:wrap;gap:4px}
+.ctl.wide{flex:1 1 100%}
+.chip{font-size:12px;padding:4px 8px}
+
+.yeargrid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.yeargrid{grid-template-columns:minmax(0,1fr)}}
+
+/* ranking */
+.rank{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:30px 46px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;scroll-margin-top:140px}
+.row.flash{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.row.dim{opacity:.5}
+.row .n{font-family:var(--display);font-weight:800;font-size:22px;color:var(--faint);text-align:right;font-variant-numeric:tabular-nums}
+.row.top .n{color:var(--gold)}
+.thumb{width:46px;height:61px;background-color:var(--line);border-radius:3px;overflow:hidden;background:var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;color:var(--faint);font-size:20px}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.info{min-width:0;display:flex;flex-direction:column;gap:4px}
+.info .t{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
+.info .t a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.info .t a:hover{border-color:var(--gold)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.sc{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;padding:1px 6px;border-radius:3px;white-space:nowrap;border:1px solid}
+.sc.c{color:var(--crit);border-color:var(--crit)}
+.sc.p{color:var(--play);border-color:var(--play)}
+.sc.c.pass{background:var(--crit);color:var(--surface)}
+.sc.p.pass{background:var(--play);color:var(--surface)}
+.sc.na{color:var(--faint);border-color:var(--line)}
+.pips{display:inline-flex;gap:3px;flex-wrap:wrap}
+.pip{font-family:var(--mono);font-size:10px;letter-spacing:.03em;padding:1px 5px;border-radius:3px;border:1px dashed var(--line);color:var(--faint)}
+.pip.nom{border-style:solid;border-color:var(--muted);color:var(--muted)}
+.pip.won{background:var(--gold);border:1px solid var(--gold);color:var(--bg)}
+.via{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.idx{font-family:var(--display);font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.bar{width:84px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);border-radius:2px}
+.own{display:flex;gap:4px}
+.own button{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.own button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+@media (max-width:560px){.row{grid-template-columns:24px 40px minmax(0,1fr)}.right{grid-column:2/-1;flex-direction:row;align-items:center;justify-content:space-between}.thumb{width:40px;height:53px}}
+
+/* panel lateral */
+.side{display:flex;flex-direction:column;gap:20px;position:sticky;top:140px}
+@media (max-width:900px){.side{position:static}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card h3{font-size:20px;font-weight:800;text-transform:uppercase}
+.card p{margin:0;font-size:13px;color:var(--muted)}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart .ax{stroke:var(--line)}
+.chart text{fill:var(--muted);font-family:var(--mono);font-size:10px}
+.chart .lbl{fill:var(--fg);font-family:var(--body);font-size:10.5px}
+.chart .cut{stroke:var(--faint);stroke-dasharray:3 3}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.tip{position:fixed;pointer-events:none;background:var(--fg);color:var(--bg);font-size:12px;padding:6px 8px;border-radius:4px;max-width:240px;z-index:20;line-height:1.35}
+.mini{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.mini li{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.mini li button{all:unset;cursor:pointer;border-bottom:1px solid var(--line)}
+.mini li button:hover,.mini li button:focus-visible{border-color:var(--gold)}
+.empty{color:var(--muted);font-size:13px}
+
+/* TGA */
+.wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.goty{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.goty:hover{border-color:var(--gold)}
+.goty.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.goty .top{display:flex;gap:10px;align-items:flex-start}
+.goty .top .thumb{width:54px;height:72px;flex:none}
+.goty .yr{font-family:var(--display);font-size:26px;font-weight:800;color:var(--gold);line-height:1}
+.goty .win{font-family:var(--display);font-weight:800;font-size:22px;line-height:1.02;text-transform:uppercase}
+.goty ul{list-style:none;margin:0;padding:8px 0 0;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted)}
+.goty ul li{display:flex;justify-content:space-between;gap:8px}
+.bar2{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.search input{width:min(320px,100%);padding:8px 12px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit}
+.group{display:flex;flex-direction:column;gap:10px}
+.group h3{font-size:21px;font-weight:800;text-transform:uppercase}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.cat .n{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cat .w{font-weight:600;line-height:1.3}
+.cat .w::before{content:"★ ";color:var(--gold)}
+.cat ul{margin:0;padding:0;list-style:none;font-size:13px;color:var(--muted)}
+.res{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:6px;font-size:14px}
+.res .y{font-family:var(--mono);color:var(--gold)}
+mark{background:var(--gold);color:var(--bg);border-radius:2px;padding:0 2px}
+.cmp{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.cmp table{border-collapse:collapse;width:100%;min-width:820px;font-size:13px}
+.cmp th,.cmp td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.cmp td.y{font-family:var(--display);font-size:20px;font-weight:800;color:var(--gold)}
+.cmp td.same{color:var(--gold-ink);font-weight:600}
+.cmp td.same::before{content:"● ";color:var(--gold)}
+.cmp td.k{font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.cmp tr:last-child td{border-bottom:none}
+.sec{display:flex;flex-direction:column;gap:16px}
+.sec>h2{font-size:clamp(28px,4vw,40px);font-weight:900;text-transform:uppercase;line-height:1}
+.sec>p{margin:0;color:var(--muted);max-width:72ch}
+footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:6px;max-width:90ch}
+footer a{color:var(--gold-ink)}
+@media (max-width:640px){.podium{grid-template-columns:minmax(0,1fr)}.podium .cv{width:130px}}
+/* estados y plataformas */
+.own{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.own button[data-own="terminado"][aria-pressed="true"]{background:var(--crit);border-color:var(--crit);color:var(--surface)}
+.own button[data-own="completo"][aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--bg)}
+.plats{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.02em}
+.plats b{font-weight:500;color:var(--fg)}
+.chips .sep{width:1px;background:var(--line);margin:0 4px}
+.banner{display:flex;flex-direction:column;gap:8px;border:1px dashed var(--gold);border-radius:6px;padding:14px 16px;background:var(--surface)}
+.banner ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--fg);display:flex;flex-direction:column;gap:3px}
+.banner .upd{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.kpi b{font-family:var(--display);font-size:38px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.kpi span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.statgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.statgrid{grid-template-columns:minmax(0,1fr)}}
+.ybars{display:flex;flex-direction:column;gap:6px}
+.ybar{display:grid;grid-template-columns:44px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:12px}
+.ybar .y{font-family:var(--display);font-weight:800;font-size:18px;color:var(--gold)}
+.ybar .track{position:relative;height:14px;background:var(--line);border-radius:3px;overflow:hidden}
+.ybar .track i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.ybar .n{font-family:var(--mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.tw{overflow-x:auto}
+.ptable td,.ptable th{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.ptable th{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.ptable td.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fis{font-family:var(--mono);font-size:10px;letter-spacing:.03em;padding:1px 6px;border-radius:3px;border:1px dashed var(--line);color:var(--faint);background:transparent;cursor:default}
+button.fis{cursor:pointer}
+.fis.si{border:1px solid var(--gold);color:var(--gold-ink)}
+.fis.no{border:1px solid var(--line);color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+body{margin:0}
+.boot{font-family:var(--mono);font-size:13px;color:var(--muted);padding:12px 0}
+.viewbar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:13px}
+.viewbar label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.viewbar select,.viewbar input:not([type=checkbox]){font:inherit;padding:6px 8px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--fg);max-width:100%}
+.viewbar input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px}
+.cmpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.cmpgrid h4{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--fg);color:var(--bg);font-family:var(--mono);font-size:13px;padding:8px 14px;border-radius:4px;z-index:20}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Crítica · Jugadores · Premios · 2014 – 2026</div>
+    <h1>El mejor juego <span>de cada año</span></h1>
+    <p>Para cada año, los nominados al premio gordo de The Game Awards, DICE, GDC, BAFTA y Golden Joystick, más los 20 mejor valorados en Metacritic y en Backloggd, remasters incluidos. Se ordenan con un índice que mezcla crítica, jugadores y premios; los pesos y las notas de corte son tuyos.</p>
+  </header>
+
+  <div class="boot" id="boot">Cargando datos…</div>
+
+  <div class="sticky">
+    <div class="tabs" role="group" aria-label="Sección">
+      <button data-tab="rank" aria-pressed="true">Ranking anual</button>
+      <button data-tab="y26" aria-pressed="false">2026 en curso</button>
+      <button data-tab="col" aria-pressed="false">Mi colección</button>
+      <button data-tab="tga" aria-pressed="false">Palmarés TGA</button>
+      <button data-tab="cmp" aria-pressed="false">Premios comparados</button>
+    </div>
+    <div class="years" id="years" role="group" aria-label="Año"></div>
+  </div>
+
+  <!-- RANKING -->
+  <section id="tab-rank" class="sec" aria-label="Ranking anual">
+    <div id="banner26" class="banner" hidden></div>
+    <div id="podium"></div>
+    <div class="controls">
+      <div class="ctl"><label for="wc">Peso crítica <output id="owc"></output></label><input id="wc" type="range" min="0" max="100" step="5" value="40"></div>
+      <div class="ctl"><label for="wp">Peso jugadores <output id="owp"></output></label><input id="wp" type="range" min="0" max="100" step="5" value="40"></div>
+      <div class="ctl"><label for="wa">Peso premios <output id="owa"></output></label><input id="wa" type="range" min="0" max="100" step="5" value="20"></div>
+      <div class="ctl"><label for="cc">Corte Metacritic <output id="occ"></output></label><input id="cc" type="range" min="80" max="95" step="1" value="88"></div>
+      <div class="ctl"><label for="cp">Corte Backloggd <output id="ocp"></output></label><input id="cp" type="range" min="3.5" max="4.6" step="0.05" value="4"></div>
+      <div class="ctl wide"><label>Mostrar</label><div class="chips" id="show" role="group" aria-label="Filtro">
+        <button class="chip" data-f="all" aria-pressed="true">Todos</button>
+        <button class="chip" data-f="cut" aria-pressed="false">Superan ambos cortes</button>
+        <button class="chip" data-f="aw" aria-pressed="false">Premiados o nominados</button>
+        <button class="chip" data-f="fis" aria-pressed="false">Con edición física</button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="chip" data-f="tengo" aria-pressed="false">Tengo</button>
+        <button class="chip" data-f="quiero" aria-pressed="false">Quiero</button>
+        <button class="chip" data-f="pend" aria-pressed="false">Tengo sin terminar</button>
+        <button class="chip" data-f="terminado" aria-pressed="false">Terminados</button>
+        <button class="chip" data-f="completo" aria-pressed="false">100%</button>
+      </div></div>
+      <div class="ctl wide"><label>Cuentan como candidatos <span style="text-transform:none;letter-spacing:0">(los juegos nuevos siempre; los nominados a algún premio gordo también)</span></label><div class="chips" id="inc" role="group" aria-label="Tipos incluidos"></div></div>
+      <div class="ctl wide"><label>Plataforma <span id="plHint" style="text-transform:none;letter-spacing:0"></span></label><div class="chips" id="plats" role="group" aria-label="Plataformas"></div></div>
+    </div>
+    <div class="yeargrid">
+      <div class="rank" id="rank" aria-live="polite"></div>
+      <aside class="side">
+        <div class="card chart"><h3>Crítica frente a jugadores</h3><p>Cada punto es un candidato del año. Las líneas discontinuas son tus notas de corte; arriba a la derecha está lo que gusta a todos.</p><div id="scatter"></div>
+          <div class="legend"><span><i style="background:var(--gold)"></i>Ganó el TGA</span><span><i style="background:var(--fg)"></i>Ganó otro premio</span><span><i style="border:2px solid var(--fg)"></i>Nominado</span><span><i style="border:2px solid var(--faint)"></i>Sin premios</span></div></div>
+        <div class="card"><h3>Olvidados</h3><p>Notas altas en crítica y jugadores, ninguna nominación en los cinco premios.</p><ul class="mini" id="forgot"></ul></div>
+        <div class="card"><h3>Premiados con nota discreta</h3><p>Ganaron algún premio gordo con una nota media por debajo de la mediana de sus rivales.</p><ul class="mini" id="over"></ul></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- COLECCIÓN -->
+  <section id="tab-col" class="sec" aria-label="Mi colección" hidden>
+    <h2 id="colTitle">Mi colección</h2>
+    <p>Lo que cada uno marca en el ranking como Tengo, Quiero, Terminado o 100%. Cada persona tiene su colección; puedes ver la de los demás (si la comparten) y compararla con la tuya.</p>
+    <div id="colOut" style="display:flex;flex-direction:column;gap:22px"></div>
+  </section>
+
+  <!-- TGA -->
+  <section id="tab-tga" class="sec" aria-label="Palmarés TGA" hidden>
+    <h2>Palmarés de The Game Awards</h2>
+    <p>Cada Juego del Año con sus finalistas. Toca una tarjeta o un año para ver todas las categorías de esa gala, o busca un juego, una persona o un equipo en las doce ediciones.</p>
+    <div class="wall" id="wall"></div>
+    <div class="bar2"><div class="eyebrow" id="tgaYearLbl"></div><div class="search"><input id="q" type="search" placeholder="Buscar juego, persona o equipo…" aria-label="Buscar en todas las ediciones"></div></div>
+    <div id="tgaOut" style="display:flex;flex-direction:column;gap:24px"></div>
+  </section>
+
+  <!-- COMPARATIVA -->
+  <section id="tab-cmp" class="sec" aria-label="Premios comparados" hidden>
+    <h2>¿Coincide el resto de la industria?</h2>
+    <p>El Juego del Año de The Game Awards frente al premio principal de DICE, Game Developers Choice (GDC), BAFTA y Golden Joystick, y frente al nº 1 de Metacritic y Backloggd de ese año. Un punto dorado marca cuando coincide con The Game Awards.</p>
+    <div class="cmp"><table id="cmpT"></table></div>
+  </section>
+
+  <footer>
+    <div><strong>Fuentes.</strong> Palmarés de The Game Awards, DICE, GDC, BAFTA y Golden Joystick: Wikipedia en inglés. Notas de crítica: Metacritic (nota agregada actual; el top 20 exige al menos 25 críticas). Notas de jugadores y carátulas: Backloggd (media calculada sobre la distribución de votos; el top 20 exige 2.000 votos hasta 2023 y 1.000 en 2024–2025). Datos históricos recogidos el 11 de octubre de 2026. Plataformas: las que lista Metacritic para cada juego, incluidas versiones posteriores. Edición física: “Sí” cuando Wikidata registra un formato físico (disco, cartucho, tarjeta) o el artículo de Wikipedia menciona una edición física o distribuidoras como Limited Run Games; “Solo digital” cuando Wikipedia lo dice expresamente; el resto queda sin confirmar y se puede marcar a mano tocando la etiqueta.</div>
+    <div><strong>Índice.</strong> Crítica = Metascore; jugadores = media de Backloggd × 20, ajustada por número de votos (se mezcla con la media del año como si tuviera 1.000 votos más, para que una nota con pocos votos no se dispare); premios = ganar el TGA 10 puntos, otro premio 5, nominación al TGA 3, a otro 1,5, sobre un máximo de 30. Si falta una nota, se reparte su peso entre las demás. Golden Joystick solo publica ganador.</div>
+    <div>Un mismo juego puede figurar en dos años si se relanzó (remasters, ediciones de Switch 2). Ports, ediciones completas, recopilatorios y versiones de Switch 2 quedan fuera del ranking por defecto (se pueden incluir); remakes, remasters y expansiones cuentan, como en The Game Awards. 2026 es un año en curso: sus candidatos se recalculan cada semana (Backloggd con al menos 500 votos).</div>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="app.js" defer></script>
+</body>
+</html>

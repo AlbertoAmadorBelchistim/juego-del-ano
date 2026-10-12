@@ -1,0 +1,18 @@
+{
+ "tga": {"date":"2026-12-10","venue":"Peacock Theater, Los Angeles","nominees":null},
+ "labels": {"Golden Joystick":"Nominado a Juego de consola o de PC del año (Golden Joystick 2026). Los nominados a Ultimate Game of the Year se conocerán más adelante."},
+ "games": {
+  "007 First Light":{"Golden Joystick":"nom"},"Fire Emblem: Fortune's Weave":{"Golden Joystick":"nom"},"Forza Horizon 6":{"Golden Joystick":"nom"},
+  "LEGO Batman: Legacy of the Dark Knight":{"Golden Joystick":"nom"},"Nioh 3":{"Golden Joystick":"nom"},"Onimusha: Way of the Sword":{"Golden Joystick":"nom"},
+  "Pokémon Pokopia":{"Golden Joystick":"nom"},"PRAGMATA":{"Golden Joystick":"nom"},"Resident Evil Requiem":{"Golden Joystick":"nom"},"SAROS":{"Golden Joystick":"nom"},
+  "Big Walk":{"Golden Joystick":"nom"},"Crimson Desert":{"Golden Joystick":"nom"},"Escape from Tarkov":{"Golden Joystick":"nom"},"Esoteric Ebb":{"Golden Joystick":"nom"},
+  "MECCHA CHAMELEON":{"Golden Joystick":"nom"},"Mewgenics":{"Golden Joystick":"nom"},"Order of the Sinking Star":{"Golden Joystick":"nom"},
+  "STAR WARS Zero Company":{"Golden Joystick":"nom"},"The Blood of Dawnwalker":{"Golden Joystick":"nom"},"Valheim":{"Golden Joystick":"nom"}
+ },
+ "notes": [
+  "The Game Awards 2026: 10 de diciembre en el Peacock Theater de Los Ángeles. Los nominados se anuncian en noviembre.",
+  "Golden Joystick Awards 2026: gala el 11 de noviembre en Londres. Ya hay nominados a Juego de consola y de PC del año; los de Ultimate Game of the Year se anunciarán después (votación del 26 al 30 de octubre).",
+  "DICE, GDC y BAFTA premian los juegos de 2026 a principios de 2027."
+ ],
+ "upcoming": [{"t":"Grand Theft Auto VI","date":"2026-11-19","note":"Take-Two mantiene el 19 de noviembre; queda muy justo para el corte de elegibilidad de The Game Awards."}]
+}

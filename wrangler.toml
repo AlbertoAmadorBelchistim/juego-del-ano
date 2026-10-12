@@ -1,0 +1,8 @@
+name = "juego-del-ano"
+compatibility_date = "2025-09-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "juego-del-ano"
+database_id = "PEGA-AQUI-EL-ID-DE-LA-BASE-D1"
