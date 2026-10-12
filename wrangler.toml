@@ -5,4 +5,4 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "juego-del-ano"
-database_id = "PEGA-AQUI-EL-ID-DE-LA-BASE-D1"
+database_id = "6072c3f4-6e6d-4071-8bf1-cdd1242fcccf"
