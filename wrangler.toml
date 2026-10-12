@@ -6,3 +6,8 @@ pages_build_output_dir = "public"
 binding = "DB"
 database_name = "juego-del-ano"
 database_id = "6072c3f4-6e6d-4071-8bf1-cdd1242fcccf"
+
+# Login de Cloudflare Access (no son secretos: dominio del equipo y AUD de la aplicación "Juego del Año")
+[vars]
+ACCESS_TEAM_DOMAIN = "floral-recipe-1018.cloudflareaccess.com"
+ACCESS_AUD = "43faa6817dbcf6b771f3170c8878e5ceb0dd52841295f8058d934173db3bce74"
