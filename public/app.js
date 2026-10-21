@@ -2,6 +2,7 @@
 (async () => {
 const getJSON = async u => { const r = await fetch(u, {cache: "no-cache"}); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); };
 const [GAMES, SNAP26, DATA, MAP, OTHER] = await Promise.all(["games","y2026","tga","map","other"].map(n => getJSON("data/" + n + ".json")));
+const HALIAS = await getJSON("data/hogar_alias.json").catch(() => ({}));
 const HIST_YEARS = DATA.map(d=>d.year);
 const YEARS = [...HIST_YEARS, 2026];
 const AWK = [["TGA","TGA"],["DICE","DICE"],["GDC","GDC"],["BAFTA","BAFTA"],["Golden Joystick","Joystick"]];
@@ -69,9 +70,11 @@ function matchHogar(items){
   if(!Array.isArray(items)) return null;
   const bySlug={}, byNorm={};
   for(const g of allGames()){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||[]).push(g.id); }
-  const H={};
-  for(const it of items){ const ids = (it.slug && bySlug[it.slug]) || byNorm[normH(it.titulo)] || [];
-    for(const id of ids) (H[id]=H[id]||[]).push({formato: it.formato||"Física", plataforma: it.plataforma||""}); }
+  const H={}, aliasOf={};
+  for(const [gid, hs] of Object.entries(HALIAS)) if(Array.isArray(hs)) hs.forEach(h=>(aliasOf[h]=aliasOf[h]||[]).push(gid));
+  for(const it of items){ const ids = aliasOf[it.id] || (it.slug && bySlug[it.slug]) || byNorm[normH(it.titulo)] || [];
+    for(const id of ids) (H[id]=H[id]||[]).push({formato: it.formato||"Física", plataforma: it.plataforma||"", hid: it.id});
+    if(!ids.length) H["casa-"+it.id] = [{formato: it.formato||"Física", plataforma: it.plataforma||"", hid: it.id, titulo: it.titulo, fuera: true}]; }
   return H;
 }
 const casaLabel = c => "En casa · " + [...new Set(c.map(x=>x.formato==="Digital"?"digital":"física"))].join(" y ");
@@ -235,11 +238,23 @@ function compareBlock(m, t, name){
       <div><h4>Los dos</h4>${li(both)}</div>
     </div></div>`;
 }
+function casaCard(st, H, own){
+  const fuera = Object.entries(H||{}).filter(([id])=>id.startsWith("casa-")).map(([id,v])=>({id, ...v[0], s: st(id)}));
+  if(!fuera.length) return "";
+  fuera.sort((a,b)=> (b.s.terminado?1:0)-(a.s.terminado?1:0) || a.titulo.localeCompare(b.titulo,"es"));
+  const done = fuera.filter(x=>x.s.terminado).length;
+  const row = x => `<li class="casa-row"><span>${esc(x.titulo)} <span class="muted">· ${esc(x.plataforma)}${x.formato==="Digital"?" · digital":""}</span></span>${own ? `<span class="own">
+      <button data-own="terminado" data-id="${x.id}" aria-pressed="${!!x.s.terminado}">Terminado</button>
+      <button data-own="completo" data-id="${x.id}" aria-pressed="${!!x.s.completo}">100%</button>
+      <button data-own="jugando" data-id="${x.id}" aria-pressed="${x.s.progreso==="jugando"}">Jugando</button></span>` : (x.s.terminado ? `<span class="muted">${x.s.completo?"100 %":"terminado"}</span>` : "")}</li>`;
+  return `<div class="card"><h3>Juegos de casa fuera del catálogo</h3><p>${fuera.length} juegos que hay en casa pero no son candidatos de ningún año (${done} terminados). Su progreso también se guarda aquí y se manda a Hogar.</p>
+    <details${done?" open":""}><summary>Ver lista</summary><ul class="mini casa-list">${fuera.map(row).join("")}</ul></details></div>`;
+}
 function hogarCard(){
   if(!HOGINFO) return "";
   if(!HOGINFO.conectado) return `<div class="card"><h3>Hogar</h3><p>Tu colección está ligada a «${esc(HOGINFO.nombre)}», pero la conexión con la app Hogar aún no está activa: «Tengo» no se puede leer de casa.</p></div>`;
   if(HOGINFO.juegos && HOGINFO.juegos.error) return `<div class="card"><h3>Hogar</h3><p>No se pudo leer qué hay en casa (${esc(HOGINFO.juegos.error)}).</p></div>`;
-  const n = Array.isArray(HOGINFO.juegos) ? HOGINFO.juegos.length : 0, m = Object.keys(MYHOG||{}).length, sy = HOGINFO.sync;
+  const n = Array.isArray(HOGINFO.juegos) ? HOGINFO.juegos.length : 0, m = Object.keys(MYHOG||{}).filter(k=>!k.startsWith("casa-")).length, sy = HOGINFO.sync;
   const sp = sy && sy.sin_pareja && sy.sin_pareja.length ? `<details><summary>${sy.sin_pareja.length} títulos de mis listas sin pareja en Hogar</summary><p class="muted" style="font-size:13px">${sy.sin_pareja.map(esc).join(" · ")}</p></details>` : "";
   return `<div class="card"><h3>Hogar · ${esc(HOGINFO.nombre)}</h3>
     <p>${n} juegos en casa según Hogar; ${m} juegos de este catálogo salen como «En casa». Terminado, 100 % y Quiero se mandan a Hogar al momento.${sy?` Listas de premios y rankings enviadas el ${new Date(sy.fecha).toLocaleDateString("es-ES")}.`:""}</p>${sp}</div>`;
@@ -287,7 +302,7 @@ function renderCol(){
   const qual = `<div class="tw"><table class="ptable"><thead><tr><th>Grupo</th><th style="text-align:right">Juegos</th><th style="text-align:right">Metacritic</th><th style="text-align:right">Backloggd</th><th style="text-align:right">Índice</th></tr></thead><tbody>${
     [["Terminados",term],["Al 100%",comp],["Tengo sin terminar",pend],["Quiero",quiero]].map(([n,a])=>`<tr><td>${n}</td><td class="n">${a.length}</td><td class="n">${avg(a,g=>g.mc)?.toFixed(1).replace(".",",")??"—"}</td><td class="n">${(v=>v!=null?fmtBL(v):"—")(avg(a,g=>g.bl))}</td><td class="n">${avg(a,g=>g.ix)?.toFixed(1).replace(".",",")??"—"}</td></tr>`).join("")}</tbody></table></div>`;
   const li = arr => arr.length ? `<ul class="mini">${arr.map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}</ul>` : `<p class="empty">Nada aquí todavía.</p>`;
-  out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(id=>effOf(ST,MYHOG,id), id=>effOf(VST,VHOG,id), who)}${own?hogarCard():""}
+  out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(id=>effOf(ST,MYHOG,id), id=>effOf(VST,VHOG,id), who)}${own?hogarCard():""}${casaCard(st, H_, own)}
     <div class="statgrid">
       <div class="card"><h3>Por año</h3>${bars}</div>
       <div style="display:flex;flex-direction:column;gap:20px">

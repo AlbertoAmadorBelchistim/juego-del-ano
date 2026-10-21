@@ -8,7 +8,7 @@
 //   INGESTA_TOKEN       secreto compartido con la app Hogar (mismo valor que en su Worker)
 // Binding HOGAR (wrangler.toml): service binding al Worker «hogar».
 
-const GAME_ID = /^\d{4}-[a-z0-9-]{1,90}$/;
+const GAME_ID = /^(\d{4}-[a-z0-9-]{1,90}|casa-\d{1,9})$/;   // AAAA-slug (catálogo) o casa-<id de Hogar> (juego de casa fuera del catálogo)
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
@@ -94,20 +94,42 @@ function titles(data) {                             // id -> {titulo, slug}
 }
 const strip = ({ id, ...rest }) => rest;
 
+// Emparejamiento web -> objetos de Hogar: alias manual, slug o título normalizado (misma regla que Hogar).
+const ROMAN = { ii: "2", iii: "3", iv: "4", v: "5", vi: "6", vii: "7", viii: "8", ix: "9", x: "10", xi: "11", xii: "12", xiii: "13", xiv: "14", xv: "15", xvi: "16" };
+const normH = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/director'?s cut/g, " ").replace(/[^a-z0-9]+/g, " ")
+  .split(" ").filter(w => w && !["the", "edition", "complete", "definitive", "deluxe", "remastered", "hd", "goty", "ultimate", "collection"].includes(w)).map(w => ROMAN[w] || w).join(" ");
+async function hogarIndex(env, request, binding) {
+  const inv = await hogarCall(env, binding, "/ingesta/juegos");
+  const alias = await (await env.ASSETS.fetch(new Request(new URL("/data/hogar_alias.json", request.url)))).json().catch(() => ({}));
+  const byId = {}, bySlug = {}, byNorm = {};
+  for (const it of inv) { byId[it.id] = it; if (it.slug) (bySlug[it.slug] = bySlug[it.slug] || []).push(it); const n = normH(it.titulo); (byNorm[n] = byNorm[n] || []).push(it); }
+  return { inv, byId, find: (id, t) => (alias[id] || []).map(h => byId[h]).filter(Boolean).concat(t && t.slug && bySlug[t.slug] || []).concat(t && byNorm[normH(t.titulo)] || []) };
+}
+// Cada marca se traduce a uno o varios objetos de Hogar con su título exacto (y el slug de la web, para que Hogar lo aprenda).
+function toHogar(id, T, H) {
+  const m = /^casa-(\d+)$/.exec(id);
+  if (m) { const it = H.byId[m[1]]; return it ? [{ titulo: it.titulo, ...(it.slug ? { slug: it.slug } : {}), plataforma: it.plataforma }] : []; }
+  const t = T[id]; if (!t) return [];
+  const items = [...new Map(H.find(id, t).map(it => [it.id, it])).values()];
+  return items.length ? items.map(it => ({ titulo: it.titulo, ...(t.slug ? { slug: t.slug } : {}), plataforma: it.plataforma })) : [{ titulo: t.titulo, ...(t.slug ? { slug: t.slug } : {}) }];
+}
+
 // Progreso y «Quiero» de una persona: se manda entero (reemplazar) cada vez que cambia.
+// Nunca se manda un progreso vacío: en Hogar borraría todo lo de esa persona.
 async function pushPersona(env, request, user) {
   if (!hogarOn(env, user.binding) || !user.persona) return;
   const data = await hogarData(env, request), T = titles(data), marks = await marksOf(env, user.id);
-  const known = Object.entries(marks).filter(([id]) => T[id]);
-  const prog = await hogarCall(env, user.binding, "/ingesta/juegos-progreso", "POST", {
-    usuario: user.email, reemplazar: true,
-    juegos: known.filter(([, m]) => m.terminado || m.completo).map(([id, m]) => ({ ...T[id], terminado: !!m.terminado, completo: !!m.completo })),
-  });
-  const quiero = await hogarCall(env, user.binding, "/ingesta/juegos-listas", "POST", {
+  const H = await hogarIndex(env, request, user.binding);
+  const done = Object.entries(marks).filter(([, m]) => m.terminado || m.completo)
+    .flatMap(([id, m]) => toHogar(id, T, H).map(x => ({ ...x, terminado: !!m.terminado, completo: !!m.completo })));
+  const res = { fecha: new Date().toISOString(), enviados: done.length };
+  if (done.length) res.progreso = await hogarCall(env, user.binding, "/ingesta/juegos-progreso", "POST", { usuario: user.email, reemplazar: true, juegos: done });
+  else res.progreso = "sin enviar: no hay nada terminado";
+  res.quiero = await hogarCall(env, user.binding, "/ingesta/juegos-listas", "POST", {
     lista: "Quiero " + user.persona, reemplazar: true,
-    juegos: known.filter(([, m]) => m.estado === "quiero").map(([id]) => ({ ...T[id], posicion: true })),
+    juegos: Object.entries(marks).filter(([, m]) => m.estado === "quiero").flatMap(([id]) => toHogar(id, T, H).map(x => ({ ...x, posicion: true }))),
   });
-  await kvSet(env, "hogar_persona_" + user.id, { fecha: new Date().toISOString(), progreso: prog, quiero });
+  await kvSet(env, "hogar_persona_" + user.id, res);
 }
 
 // Listas comunes y notas: se mandan cuando cambia la versión de hogar.json (tras cada actualización semanal).
