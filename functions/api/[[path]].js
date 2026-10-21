@@ -77,7 +77,7 @@ async function hogarCall(env, binding, path, method = "GET", body) {
     method, headers: { "X-Ingesta-Token": env.INGESTA_TOKEN, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   }));
-  if (!r.ok) throw new Error(`hogar ${path} ${r.status}`);
+  if (!r.ok) { const t = await r.text().catch(() => ""); throw new Error(`hogar ${method} ${path} → ${r.status} ${t.slice(0, 300)}`); }
   return r.json();
 }
 async function kvGet(env, k) { const r = await env.DB.prepare("SELECT v FROM kv WHERE k = ?").bind(k).first(); return r ? JSON.parse(r.v) : null; }
@@ -189,16 +189,21 @@ export async function onRequest({ request, env, params, waitUntil }) {
       return json({ ok: true });
     }
 
-    if (head === "hogar" && arg === "sync" && method === "POST") {   // reenvío manual de todo
-      if (!hogarOn(env, me.binding)) return json({ error: "hogar no conectado" }, 400);
-      const listas = await pushListas(env, request, me.binding, true);
-      await pushPersona(env, request, me);
-      return json({ listas, persona: await kvGet(env, "hogar_persona_" + me.id) });
+    if (head === "hogar" && arg === "sync" && method === "POST") {   // sincronización completa, con informe por llamada
+      if (!me.hogarId) return json({ error: "sin hogar" }, 400);
+      if (!hogarOn(env, me.binding)) return json({ error: "hogar no conectado", binding: !!env[me.binding], token: !!env.INGESTA_TOKEN }, 400);
+      const log = [], step = async (label, fn) => { try { const r = await fn(); log.push({ paso: label, ok: true, resultado: r }); return r; } catch (e) { log.push({ paso: label, ok: false, error: String(e.message || e) }); return null; } };
+      const inv = await step("GET /ingesta/juegos", () => hogarCall(env, me.binding, "/ingesta/juegos"));
+      if (Array.isArray(inv)) log[log.length - 1].resultado = { juegos: inv.length };
+      const members = (await env.DB.prepare("SELECT u.id, u.email, u.persona, h.binding FROM users u JOIN hogares h ON h.id = u.hogar_id WHERE u.hogar_id = ?").bind(me.hogarId).all()).results;
+      for (const m of members) await step("progreso y Quiero " + m.persona, async () => { await pushPersona(env, request, m); return await kvGet(env, "hogar_persona_" + m.id); });
+      await step("listas y notas", () => pushListas(env, request, me.binding, true));
+      return json({ log });
     }
 
     if (head === "hogar" && arg === "estado" && method === "GET") {
       if (!me.hogarId) return json({ error: "sin hogar" }, 400);
-      return json({ conectado: hogarOn(env, me.binding), listas: await kvGet(env, "hogar_listas_" + me.binding),
+      return json({ conectado: hogarOn(env, me.binding), binding: !!env[me.binding], token: !!env.INGESTA_TOKEN, listas: await kvGet(env, "hogar_listas_" + me.binding),
         persona: await kvGet(env, "hogar_persona_" + me.id), error: await kvGet(env, "hogar_error") });
     }
 
