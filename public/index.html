@@ -40,8 +40,14 @@ header p{margin:0;color:var(--muted);max-width:66ch}
 /* barra fija */
 .sticky{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
 .tabs,.years{display:flex;flex-wrap:wrap;gap:6px}
-.years{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
-.years button{flex:none}
+.years{display:block}
+.ybtns{display:flex;flex-wrap:wrap;gap:6px}
+.ystep{display:none;gap:8px;align-items:stretch}
+.ystep button{font-size:20px;min-width:48px;line-height:1}
+.ystep button:disabled{opacity:.35;cursor:default}
+.ystep select{flex:1;font-family:var(--mono);font-size:17px;font-weight:600;padding:8px 10px;border-radius:4px;border:1px solid var(--gold);background:var(--surface);color:var(--fg);text-align:center}
+@media (max-width:640px){.ybtns{display:none}.ystep{display:flex}}
+.apierr{margin:12px 0;padding:10px 12px;border:1px solid var(--gold);border-radius:4px;background:var(--surface);font-size:14px;line-height:1.45}
 .crow .thumb{object-fit:cover}
 .mp{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;background:var(--gold-soft);color:var(--gold-ink);border:1px solid var(--gold);vertical-align:middle}
 .ctl select,.ctl input[type=search]{font:inherit;font-size:13px;padding:6px 8px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--fg);max-width:100%}
@@ -240,6 +246,7 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
       <button data-tab="cmp" aria-pressed="false">Premios comparados</button>
     </div>
     <div class="years" id="years" role="group" aria-label="Año"></div>
+    <div class="apierr" id="apiErr" role="status" hidden></div>
   </div>
 
   <!-- RANKING -->

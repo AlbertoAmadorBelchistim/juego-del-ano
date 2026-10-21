@@ -431,7 +431,8 @@ document.addEventListener("click", e=>{ const t=e.target.closest("button"); if(!
 
 /* ---------- controles ---------- */
 function syncControls(){
-  for (const k of ["wc","wp","wa","cc","cp"]) $(k).value=S[k];
+  $("years").addEventListener("change", e=>{ if(e.target.id==="ysel"){ S.year=+e.target.value; render(); } });
+for (const k of ["wc","wp","wa","cc","cp"]) $(k).value=S[k];
   $("owc").textContent=S.wc; $("owp").textContent=S.wp; $("owa").textContent=S.wa; $("occ").textContent=S.cc; $("ocp").textContent=(+S.cp).toFixed(2).replace(".",",");
   document.querySelectorAll("#show .chip").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.f===S.f); if(["tengo","quiero","pend","terminado","completo","jugando"].includes(b.dataset.f)) b.hidden=!ME; });
   $("show").querySelector(".sep").hidden=!ME;
@@ -444,7 +445,11 @@ function syncControls(){
   $("years").hidden = !(S.tab==="rank" || S.tab==="tga");
   const ys = S.tab==="tga" ? HIST_YEARS : YEARS;
   const cur = S.tab==="tga" && !HIST_YEARS.includes(S.year) ? 2025 : S.year;
-  $("years").innerHTML = ys.map(y=>`<button data-y="${y}" aria-pressed="${y===cur}">${y}</button>`).join("");
+  const i=ys.indexOf(cur), dec=[...new Set(ys.map(y=>Math.floor(y/10)*10))];
+  $("years").innerHTML = `<div class="ybtns">${ys.map(y=>`<button data-y="${y}" aria-pressed="${y===cur}">${y}</button>`).join("")}</div>
+   <div class="ystep"><button data-y="${ys[Math.max(0,i-1)]}" aria-label="Año anterior" ${i<=0?"disabled":""}>‹</button>
+   <select id="ysel" aria-label="Año">${dec.map(d=>`<optgroup label="${d}s">${ys.filter(y=>Math.floor(y/10)*10===d).reverse().map(y=>`<option value="${y}" ${y===cur?"selected":""}>${y}</option>`).join("")}</optgroup>`).reverse().join("")}</select>
+   <button data-y="${ys[Math.min(ys.length-1,i+1)]}" aria-label="Año siguiente" ${i>=ys.length-1?"disabled":""}>›</button></div>`;
 }
 function render(){ store.set("goty-ui",S); syncControls(); if(S.tab==="rank") renderRank(); if(S.tab==="col") renderCol(); if(S.tab==="tga") renderTGA(); if(S.tab==="cmp") renderCmp(); if(S.tab==="cat") renderCat(); }
 
@@ -474,7 +479,7 @@ $("scatter").addEventListener("click", e=>{ const c=e.target.closest("circle"); 
 /* ---------- API (Cloudflare Pages Functions + D1) ---------- */
 async function api(path, opt={}){
   const r = await fetch("/api/"+path, {credentials:"same-origin", headers:{"content-type":"application/json"}, ...opt});
-  if (!r.ok) throw new Error(path+" "+r.status);
+  if (!r.ok){ let b={}; try{ b=await r.json(); }catch(e){} const err=new Error(path+" "+r.status); err.status=r.status; err.code=b.error; throw err; }
   return r.json();
 }
 const fillMarks = (dst, src) => { for(const k in dst) delete dst[k]; for(const [k,v] of Object.entries(src||{})) dst[k]={estado:v.estado||null, terminado:!!v.terminado, completo:!!v.completo, progreso:v.progreso||null}; };
@@ -532,5 +537,10 @@ document.addEventListener("change", async e=>{
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && ME) loadState().catch(()=>{}); });
 $("boot").hidden = true;
 render();
-try { await loadState(); } catch(e){ console.warn("Sin sesión:", e.message); }
+try { await loadState(); $("apiErr").hidden=true; } catch(e){ console.warn("Sin sesión:", e.message);
+  const box=$("apiErr");
+  box.textContent = e.code==="cuota" ? "Ahora mismo no puedo leer las colecciones: la base de datos de Cloudflare ha agotado la cuota gratuita de hoy. Vuelve a funcionar a las 2:00 (hora peninsular). Los rankings y el catálogo sí funcionan."
+    : e.status>=500 ? "Ahora mismo no puedo leer las colecciones (error del servidor). Los rankings y el catálogo sí funcionan; prueba a recargar en un rato."
+    : "";
+  box.hidden = !box.textContent; }
 })().catch(e => { document.getElementById("boot").textContent = "No se pudieron cargar los datos: " + e.message; });

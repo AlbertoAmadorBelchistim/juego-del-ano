@@ -285,6 +285,9 @@ export async function onRequest({ request, env, params, waitUntil }) {
 
     return json({ error: "no encontrado" }, 404);
   } catch (e) {
+    const msg = String(e && e.message || e);
+    if (/row read limit|row write limit|exceeded D1|7500/i.test(msg)) return json({ error: "cuota", detalle: "La base de datos ha agotado la cuota gratuita de hoy; vuelve a funcionar a las 00:00 UTC." }, 503);
+    console.error(msg);
     return json({ error: "error interno" }, 500);
   }
 }
