@@ -5,6 +5,8 @@
 //   ACCESS_TEAM_DOMAIN  p. ej. "miequipo.cloudflareaccess.com"
 //   ACCESS_AUD          el "Application Audience (AUD) Tag" de la aplicación de Access
 //   DEV_EMAIL           solo para pruebas en local con `wrangler pages dev` (sin Access)
+//   INGESTA_TOKEN       secreto compartido con la app Hogar (mismo valor que en su Worker)
+// Binding HOGAR (wrangler.toml): service binding al Worker «hogar».
 
 const GAME_ID = /^\d{4}-[a-z0-9-]{1,90}$/;
 const json = (data, status = 200) =>
@@ -48,63 +50,156 @@ async function currentUser(request, env) {
   if (env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD) email = await verifyAccess(request, env);
   else if (env.DEV_EMAIL) email = env.DEV_EMAIL.toLowerCase();
   if (!email) return null;
-  let u = await env.DB.prepare("SELECT id, name, shared FROM users WHERE email = ?").bind(email).first();
+  const q = "SELECT u.id, u.email, u.name, u.shared, u.persona, u.hogar_id, h.nombre AS hogar_nombre, h.binding FROM users u LEFT JOIN hogares h ON h.id = u.hogar_id WHERE u.email = ?";
+  let u = await env.DB.prepare(q).bind(email).first();
   if (!u) {
     const name = email.split("@")[0].slice(0, 40);
     await env.DB.prepare("INSERT OR IGNORE INTO users (email, name) VALUES (?, ?)").bind(email, name).run();
-    u = await env.DB.prepare("SELECT id, name, shared FROM users WHERE email = ?").bind(email).first();
+    u = await env.DB.prepare(q).bind(email).first();
   }
-  return { id: u.id, name: u.name, shared: !!u.shared };
+  return { id: u.id, email: u.email, name: u.name, shared: !!u.shared, persona: u.persona, hogarId: u.hogar_id, hogarNombre: u.hogar_nombre, binding: u.binding };
 }
+const publicMe = me => ({ id: me.id, name: me.name, shared: me.shared, hogar: me.hogarId ? { id: me.hogarId, nombre: me.hogarNombre } : null });
 
 async function marksOf(env, userId) {
-  const { results } = await env.DB.prepare("SELECT game_id, estado, terminado, completo FROM marks WHERE user_id = ?").bind(userId).all();
+  const { results } = await env.DB.prepare("SELECT game_id, estado, terminado, completo, progreso FROM marks WHERE user_id = ?").bind(userId).all();
   const out = {};
-  for (const r of results) out[r.game_id] = { estado: r.estado, terminado: !!r.terminado, completo: !!r.completo };
+  for (const r of results) out[r.game_id] = { estado: r.estado, terminado: !!r.terminado, completo: !!r.completo, progreso: r.progreso || null };
   return out;
 }
 
+/* ---------- integración con la app Hogar (service binding + token) ---------- */
+// Hogar manda en qué juegos hay en casa (del hogar, no de cada persona).
+// La web manda en Terminado / 100 % / Quiero de cada persona y en las listas de premios y rankings.
+const hogarOn = (env, binding) => !!(binding && env[binding] && env.INGESTA_TOKEN);
+async function hogarCall(env, binding, path, method = "GET", body) {
+  const r = await env[binding].fetch(new Request("https://hogar" + path, {
+    method, headers: { "X-Ingesta-Token": env.INGESTA_TOKEN, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  }));
+  if (!r.ok) throw new Error(`hogar ${path} ${r.status}`);
+  return r.json();
+}
+async function kvGet(env, k) { const r = await env.DB.prepare("SELECT v FROM kv WHERE k = ?").bind(k).first(); return r ? JSON.parse(r.v) : null; }
+async function kvSet(env, k, v) { await env.DB.prepare("INSERT INTO kv (k, v, updated) VALUES (?, ?, datetime('now')) ON CONFLICT (k) DO UPDATE SET v = excluded.v, updated = excluded.updated").bind(k, JSON.stringify(v)).run(); }
+
+async function hogarData(env, request) {          // listas, notas y títulos (public/data/hogar.json)
+  const r = await env.ASSETS.fetch(new Request(new URL("/data/hogar.json", request.url)));
+  return r.json();
+}
+function titles(data) {                             // id -> {titulo, slug}
+  const m = {};
+  for (const x of [...data.notas, ...data.listas.flatMap(l => l.juegos)]) m[x.id] = { titulo: x.titulo, slug: x.slug };
+  return m;
+}
+const strip = ({ id, ...rest }) => rest;
+
+// Progreso y «Quiero» de una persona: se manda entero (reemplazar) cada vez que cambia.
+async function pushPersona(env, request, user) {
+  if (!hogarOn(env, user.binding) || !user.persona) return;
+  const data = await hogarData(env, request), T = titles(data), marks = await marksOf(env, user.id);
+  const known = Object.entries(marks).filter(([id]) => T[id]);
+  const prog = await hogarCall(env, user.binding, "/ingesta/juegos-progreso", "POST", {
+    usuario: user.email, reemplazar: true,
+    juegos: known.filter(([, m]) => m.terminado || m.completo).map(([id, m]) => ({ ...T[id], terminado: !!m.terminado, completo: !!m.completo })),
+  });
+  const quiero = await hogarCall(env, user.binding, "/ingesta/juegos-listas", "POST", {
+    lista: "Quiero " + user.persona, reemplazar: true,
+    juegos: known.filter(([, m]) => m.estado === "quiero").map(([id]) => ({ ...T[id], posicion: true })),
+  });
+  await kvSet(env, "hogar_persona_" + user.id, { fecha: new Date().toISOString(), progreso: prog, quiero });
+}
+
+// Listas comunes y notas: se mandan cuando cambia la versión de hogar.json (tras cada actualización semanal).
+async function pushListas(env, request, binding, force = false) {
+  if (!hogarOn(env, binding)) return null;
+  const data = await hogarData(env, request), key = "hogar_listas_" + binding;
+  const prev = await kvGet(env, key);
+  if (!force && prev && prev.version === data.version) return prev;
+  const res = { version: data.version, fecha: new Date().toISOString(), listas: {}, sin_pareja: [] };
+  for (const l of data.listas) {
+    const r = await hogarCall(env, binding, "/ingesta/juegos-listas", "POST", { lista: l.lista, reemplazar: true, juegos: l.juegos.map(strip) });
+    res.listas[l.lista] = r.actualizados ?? r.etiquetados ?? null;
+    for (const t of r.sin_pareja || []) if (!res.sin_pareja.includes(t)) res.sin_pareja.push(t);
+  }
+  const n = await hogarCall(env, binding, "/ingesta/juegos-notas", "POST", { juegos: data.notas.map(strip) });
+  res.notas = n.actualizados ?? null;
+  await kvSet(env, key, res);
+  return res;
+}
+
+async function hogarJuegos(env, binding) {
+  if (!hogarOn(env, binding)) return null;
+  try { return await hogarCall(env, binding, "/ingesta/juegos"); } catch (e) { return { error: String(e.message || e) }; }
+}
+
 /* ---------- rutas ---------- */
-export async function onRequest({ request, env, params }) {
+export async function onRequest({ request, env, params, waitUntil }) {
   try {
     const me = await currentUser(request, env);
     if (!me) return json({ error: "no autenticado" }, 401);
     const path = (params.path || []).map(decodeURIComponent);
     const [head, arg] = path;
     const method = request.method;
+    const bg = (p) => waitUntil(p.catch(e => kvSet(env, "hogar_error", { fecha: new Date().toISOString(), error: String(e.message || e) })));
 
     if (head === "state" && method === "GET") {
       const users = (await env.DB.prepare(
-        "SELECT u.id, u.name, COUNT(m.game_id) AS n FROM users u LEFT JOIN marks m ON m.user_id = u.id WHERE u.shared = 1 OR u.id = ? GROUP BY u.id ORDER BY u.name COLLATE NOCASE"
+        "SELECT u.id, u.name, u.hogar_id AS hogar, COUNT(m.game_id) AS n FROM users u LEFT JOIN marks m ON m.user_id = u.id WHERE u.shared = 1 OR u.id = ? GROUP BY u.id ORDER BY u.name COLLATE NOCASE"
       ).bind(me.id).all()).results;
       const fis = (await env.DB.prepare("SELECT game_id, v FROM fisica").all()).results;
-      return json({ me, users, marks: await marksOf(env, me.id), fisica: Object.fromEntries(fis.map(r => [r.game_id, r.v])) });
+      let hogar = null;
+      if (me.hogarId) {
+        hogar = { nombre: me.hogarNombre, conectado: hogarOn(env, me.binding), juegos: await hogarJuegos(env, me.binding) };
+        if (hogar.conectado) {
+          bg(pushListas(env, request, me.binding));
+          if (!(await kvGet(env, "hogar_persona_" + me.id))) bg(pushPersona(env, request, me));
+          hogar.sync = await kvGet(env, "hogar_listas_" + me.binding);
+        }
+      }
+      return json({ me: publicMe(me), users, marks: await marksOf(env, me.id), fisica: Object.fromEntries(fis.map(r => [r.game_id, r.v])), hogar });
     }
 
     if (head === "marks" && method === "GET") {
       const uid = Number(new URL(request.url).searchParams.get("u"));
       if (!Number.isInteger(uid)) return json({ error: "u" }, 400);
-      if (uid !== me.id) {
-        const other = await env.DB.prepare("SELECT shared FROM users WHERE id = ?").bind(uid).first();
-        if (!other || !other.shared) return json({ error: "colección privada" }, 403);
-      }
-      return json({ marks: await marksOf(env, uid) });
+      const other = await env.DB.prepare("SELECT u.shared, u.hogar_id, h.binding FROM users u LEFT JOIN hogares h ON h.id = u.hogar_id WHERE u.id = ?").bind(uid).first();
+      if (!other) return json({ error: "no existe" }, 404);
+      if (uid !== me.id && !other.shared) return json({ error: "colección privada" }, 403);
+      const juegos = other.hogar_id ? await hogarJuegos(env, other.binding) : null;
+      return json({ marks: await marksOf(env, uid), hogar: other.hogar_id ? { id: other.hogar_id, juegos } : null });
     }
 
     if (head === "marks" && method === "PUT") {
       if (!GAME_ID.test(arg || "")) return json({ error: "id" }, 400);
       const b = await request.json();
-      const estado = b.estado === "tengo" || b.estado === "quiero" ? b.estado : null;
+      let estado = b.estado === "tengo" || b.estado === "quiero" ? b.estado : null;
+      if (me.hogarId && estado === "tengo") estado = null;   // con hogar, «tengo» lo decide Hogar
       const completo = !!b.completo, terminado = !!b.terminado || completo;
-      if (!estado && !terminado) {
+      const progreso = !terminado && (b.progreso === "jugando" || b.progreso === "abandonado") ? b.progreso : null;
+      if (!estado && !terminado && !progreso) {
         await env.DB.prepare("DELETE FROM marks WHERE user_id = ? AND game_id = ?").bind(me.id, arg).run();
       } else {
         await env.DB.prepare(
-          `INSERT INTO marks (user_id, game_id, estado, terminado, completo, updated) VALUES (?, ?, ?, ?, ?, datetime('now'))
-           ON CONFLICT (user_id, game_id) DO UPDATE SET estado = excluded.estado, terminado = excluded.terminado, completo = excluded.completo, updated = excluded.updated`
-        ).bind(me.id, arg, estado, terminado ? 1 : 0, completo ? 1 : 0).run();
+          `INSERT INTO marks (user_id, game_id, estado, terminado, completo, progreso, updated) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+           ON CONFLICT (user_id, game_id) DO UPDATE SET estado = excluded.estado, terminado = excluded.terminado, completo = excluded.completo, progreso = excluded.progreso, updated = excluded.updated`
+        ).bind(me.id, arg, estado, terminado ? 1 : 0, completo ? 1 : 0, progreso).run();
       }
+      if (hogarOn(env, me.binding)) bg(pushPersona(env, request, me));
       return json({ ok: true });
+    }
+
+    if (head === "hogar" && arg === "sync" && method === "POST") {   // reenvío manual de todo
+      if (!hogarOn(env, me.binding)) return json({ error: "hogar no conectado" }, 400);
+      const listas = await pushListas(env, request, me.binding, true);
+      await pushPersona(env, request, me);
+      return json({ listas, persona: await kvGet(env, "hogar_persona_" + me.id) });
+    }
+
+    if (head === "hogar" && arg === "estado" && method === "GET") {
+      if (!me.hogarId) return json({ error: "sin hogar" }, 400);
+      return json({ conectado: hogarOn(env, me.binding), listas: await kvGet(env, "hogar_listas_" + me.binding),
+        persona: await kvGet(env, "hogar_persona_" + me.id), error: await kvGet(env, "hogar_error") });
     }
 
     if (head === "fisica" && method === "PUT") {
@@ -125,7 +220,7 @@ export async function onRequest({ request, env, params }) {
       const name = String(b.name || "").trim().slice(0, 40) || me.name;
       const shared = b.shared === false ? 0 : 1;
       await env.DB.prepare("UPDATE users SET name = ?, shared = ? WHERE id = ?").bind(name, shared, me.id).run();
-      return json({ me: { id: me.id, name, shared: !!shared } });
+      return json({ me: publicMe({ ...me, name, shared: !!shared }) });
     }
 
     return json({ error: "no encontrado" }, 404);

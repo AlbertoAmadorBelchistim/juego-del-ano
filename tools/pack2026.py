@@ -10,3 +10,7 @@ for f in sorted(os.listdir(D)):
     games.append({k: v for k, v in d.items() if v not in (None, []) or k in ('aw', 'via')})
 json.dump({"meta": meta, "games": games}, open(OUT, 'w'), ensure_ascii=False, separators=(',', ':'))
 print(len(games), 'juegos ->', os.path.normpath(OUT))
+
+# Listas y notas para la app Hogar (public/data/hogar.json); la web las envía sola cuando cambian.
+import subprocess
+subprocess.run(["node", os.path.join(os.path.dirname(os.path.abspath(__file__)), "listas_hogar.mjs")], check=True)

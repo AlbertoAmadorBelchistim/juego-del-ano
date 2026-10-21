@@ -11,3 +11,9 @@ database_id = "6072c3f4-6e6d-4071-8bf1-cdd1242fcccf"
 [vars]
 ACCESS_TEAM_DOMAIN = "floral-recipe-1018.cloudflareaccess.com"
 ACCESS_AUD = "43faa6817dbcf6b771f3170c8878e5ceb0dd52841295f8058d934173db3bce74"
+
+# App Hogar: llamada interna al Worker «hogar», sin pasar por Access.
+# Requiere el secreto INGESTA_TOKEN en Pages (Settings > Variables and secrets), con el mismo valor que en el Worker.
+[[services]]
+binding = "HOGAR"
+service = "hogar"

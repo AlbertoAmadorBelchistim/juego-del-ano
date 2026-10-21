@@ -22,3 +22,10 @@ CREATE TABLE IF NOT EXISTS fisica (              -- correcciones manuales de "ed
   by_user INTEGER REFERENCES users(id),
   updated TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Integración con la app Hogar (octubre de 2026)
+ALTER TABLE marks ADD COLUMN progreso TEXT CHECK (progreso IN ('jugando','abandonado'));
+CREATE TABLE IF NOT EXISTS hogares (id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, binding TEXT NOT NULL);
+ALTER TABLE users ADD COLUMN hogar_id INTEGER REFERENCES hogares(id);
+ALTER TABLE users ADD COLUMN persona TEXT;        -- nombre que usa Hogar para listas («Quiero Alberto»)
+CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT, updated TEXT NOT NULL DEFAULT (datetime('now')));

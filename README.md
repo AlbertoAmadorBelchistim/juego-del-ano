@@ -63,6 +63,16 @@ Vuelve a desplegar. La API comprueba la firma del token de Access en cada petici
 
 Con la política de *Solo invitados*, añade su correo a la lista. Cuando entren por primera vez se crea su colección vacía; desde la pestaña **Mi colección** pueden cambiar su nombre visible y decidir si los demás pueden verla.
 
+## Conexión con la app Hogar
+
+Hogar (Worker «hogar», repositorio AlbertoAmadorBelchistim/hogar) manda en qué juegos hay en casa; esta web manda en Terminado, 100 %, Quiero, Jugando y Abandonado de cada persona y en las listas de premios y rankings.
+
+- **Identidad:** el correo de Cloudflare Access. Los usuarios con `hogar_id` comparten la posesión de su hogar; el progreso es de cada uno. `persona` es el nombre que Hogar usa en sus listas («Quiero Alberto»).
+- **Transporte:** service binding `HOGAR` (wrangler.toml) + secreto `INGESTA_TOKEN` en Pages (mismo valor que en el Worker de Hogar). Sin el secreto la web funciona igual, con «Tengo» manual.
+- **Qué se envía:** progreso y «Quiero» de una persona cada vez que cambia una marca (reemplazando lo anterior); las listas de `public/data/hogar.json` (GOTY TGA/DICE/GDC/BAFTA/Joystick, Consenso anual, Top Metacritic anual, Top Backloggd anual, Candidato 2026) y las notas de Backloggd cuando cambia su versión, en la primera visita tras cada despliegue.
+- **Qué se lee:** `GET /ingesta/juegos` al cargar la web, para marcar «En casa · física/digital».
+- **Diagnóstico:** `GET /api/hogar/estado` (último envío, títulos sin pareja, último error); `POST /api/hogar/sync` reenvía todo.
+
 ## Actualizar 2026
 
 Los candidatos de 2026 viven en `public/data/y2026.json`. Para regenerarlos (requiere leer Backloggd desde un navegador, ver `tools/README.md`):
@@ -70,7 +80,7 @@ Los candidatos de 2026 viven en `public/data/y2026.json`. Para regenerarlos (req
 ```
 cd tools
 python3 build2026.py      # escribe tools/docs/*.json
-python3 pack2026.py       # los empaqueta en public/data/y2026.json
+python3 pack2026.py       # los empaqueta en public/data/y2026.json y genera public/data/hogar.json
 git commit -am "2026: actualización semanal" && git push
 ```
 

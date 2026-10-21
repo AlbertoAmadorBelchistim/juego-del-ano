@@ -57,7 +57,24 @@ const passes = g => g.mc!=null && g.bl!=null && g.mc>=S.cc && g.bl>=S.cp-1e-9;
 const hasAw = g => Object.keys(g.aw).length>0;
 const wonAny = g => Object.values(g.aw).includes("won");
 const both = g => (g.mc!=null && g.bl!=null) ? (g.mc + g.bl*20)/2 : null;
-const st = id => ST[id] || {};
+/* «Tengo» de quien tiene hogar conectado lo decide la app Hogar (H: id -> [{formato, plataforma}]) */
+let MYHOG = null, VHOG = null, HOGINFO = null;
+function effOf(M, H, id){ const s = M[id] || {}; if(!H) return s; const casa = H[id];
+  return {...s, estado: casa ? "tengo" : (s.estado==="quiero" ? "quiero" : null), casa}; }
+const st = id => effOf(ST, MYHOG, id);
+const ROMAN = {ii:"2",iii:"3",iv:"4",v:"5",vi:"6",vii:"7",viii:"8",ix:"9",x:"10",xi:"11",xii:"12",xiii:"13",xiv:"14",xv:"15",xvi:"16"};
+const normH = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/director'?s cut/g," ").replace(/[^a-z0-9]+/g," ")
+  .split(" ").filter(w=>w && !["the","edition","complete","definitive","deluxe","remastered","hd","goty","ultimate","collection"].includes(w)).map(w=>ROMAN[w]||w).join(" ");
+function matchHogar(items){
+  if(!Array.isArray(items)) return null;
+  const bySlug={}, byNorm={};
+  for(const g of allGames()){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||[]).push(g.id); }
+  const H={};
+  for(const it of items){ const ids = (it.slug && bySlug[it.slug]) || byNorm[normH(it.titulo)] || [];
+    for(const id of ids) (H[id]=H[id]||[]).push({formato: it.formato||"Física", plataforma: it.plataforma||""}); }
+  return H;
+}
+const casaLabel = c => "En casa · " + [...new Set(c.map(x=>x.formato==="Digital"?"digital":"física"))].join(" y ");
 const fisOf = g => FIS[g.id]==='none' ? null : (FIS[g.id] || g.fis || null);
 function fisChip(g){ const v=fisOf(g), man=!!FIS[g.id];
   const lab = v==="si" ? "Edición física" : v==="no" ? "Solo digital" : "¿Edición física?";
@@ -81,11 +98,15 @@ function plats(g){ if(!g.pl||!g.pl.length) return ""; return `<span class="plats
 function link(g){ const u = g.bls?`https://backloggd.com/games/${g.bls}/`: g.mcs?`https://www.metacritic.com/game/${g.mcs}/`:null; return u?`<a href="${u}" target="_blank" rel="noopener">${esc(g.t)}</a>`:esc(g.t); }
 const VIA = {aw:"premios",mc:"top Metacritic",bl:"top Backloggd"};
 function ownBtns(g){ if(!ME) return ""; const s=st(g.id);
+  const tengo = MYHOG ? (s.casa ? `<span class="casa" title="${esc(s.casa.map(x=>x.plataforma+" · "+x.formato).join(", "))} (dato de Hogar)">${casaLabel(s.casa)}</span>` : "")
+    : `<button data-own="tengo" data-id="${g.id}" aria-pressed="${s.estado==="tengo"}">Tengo</button>`;
   return `<div class="own">
-    <button data-own="tengo" data-id="${g.id}" aria-pressed="${s.estado==="tengo"}">Tengo</button>
+    ${tengo}
     <button data-own="quiero" data-id="${g.id}" aria-pressed="${s.estado==="quiero"}">Quiero</button>
     <button data-own="terminado" data-id="${g.id}" aria-pressed="${!!s.terminado}">Terminado</button>
-    <button data-own="completo" data-id="${g.id}" aria-pressed="${!!s.completo}">100%</button></div>`; }
+    <button data-own="completo" data-id="${g.id}" aria-pressed="${!!s.completo}">100%</button>
+    <button data-own="jugando" data-id="${g.id}" aria-pressed="${s.progreso==="jugando"}">Jugando</button>
+    <button data-own="abandonado" data-id="${g.id}" aria-pressed="${s.progreso==="abandonado"}">Abandonado</button></div>`; }
 
 /* ---------- ranking ---------- */
 function yearGames(y){ return allGames().filter(g=>g.y===y && eligible(g)).map(g=>({...g, ix:index(g)})).sort((a,b)=>b.ix-a.ix); }
@@ -94,6 +115,7 @@ function filt(g){
   switch(S.f){ case "cut": return passes(g); case "aw": return hasAw(g);
     case "tengo": return s.estado==="tengo"; case "quiero": return s.estado==="quiero";
     case "fis": return fisOf(g)==="si";
+    case "jugando": return s.progreso==="jugando";
     case "pend": return s.estado==="tengo" && !s.terminado; case "terminado": return !!s.terminado; case "completo": return !!s.completo; }
   return true;
 }
@@ -192,9 +214,8 @@ function viewSel(){
     <label class="me chk"><input type="checkbox" id="meShared" ${ME.shared?"checked":""}> Los demás pueden ver mi colección</label>
   </div>`;
 }
-function compareBlock(mine, theirs, name){
+function compareBlock(m, t, name){
   const G = allGames().map(g=>({...g, ix:index(g)}));
-  const m = id=>mine[id]||{}, t = id=>theirs[id]||{};
   const L = f => G.filter(g=>f(g.id)).sort((a,b)=>b.ix-a.ix);
   const both = L(id=>m(id).terminado && t(id).terminado);
   const onlyMe = L(id=>m(id).terminado && !t(id).terminado);
@@ -214,14 +235,24 @@ function compareBlock(mine, theirs, name){
       <div><h4>Los dos</h4>${li(both)}</div>
     </div></div>`;
 }
+function hogarCard(){
+  if(!HOGINFO) return "";
+  if(!HOGINFO.conectado) return `<div class="card"><h3>Hogar</h3><p>Tu colección está ligada a «${esc(HOGINFO.nombre)}», pero la conexión con la app Hogar aún no está activa: «Tengo» no se puede leer de casa.</p></div>`;
+  if(HOGINFO.juegos && HOGINFO.juegos.error) return `<div class="card"><h3>Hogar</h3><p>No se pudo leer qué hay en casa (${esc(HOGINFO.juegos.error)}).</p></div>`;
+  const n = Array.isArray(HOGINFO.juegos) ? HOGINFO.juegos.length : 0, m = Object.keys(MYHOG||{}).length, sy = HOGINFO.sync;
+  const sp = sy && sy.sin_pareja && sy.sin_pareja.length ? `<details><summary>${sy.sin_pareja.length} títulos de mis listas sin pareja en Hogar</summary><p class="muted" style="font-size:13px">${sy.sin_pareja.map(esc).join(" · ")}</p></details>` : "";
+  return `<div class="card"><h3>Hogar · ${esc(HOGINFO.nombre)}</h3>
+    <p>${n} juegos en casa según Hogar; ${m} juegos de este catálogo salen como «En casa». Terminado, 100 % y Quiero se mandan a Hogar al momento.${sy?` Listas de premios y rankings enviadas el ${new Date(sy.fecha).toLocaleDateString("es-ES")}.`:""}</p>${sp}</div>`;
+}
 function renderCol(){
   const out=$("colOut");
   if(!ME){ out.innerHTML=`<p class="empty">No se ha podido identificar tu sesión, así que la colección no está disponible. Recarga la página; si sigue igual, vuelve a entrar con tu correo.</p>`; return; }
-  const own = VIEW===ME.id; const ST_ = own ? ST : VST; const st = id => ST_[id] || {};
+  const own = VIEW===ME.id; const ST_ = own ? ST : VST; const H_ = own ? MYHOG : VHOG; const st = id => effOf(ST_, H_, id);
   const who = own ? null : (USERS.find(u=>u.id===VIEW)||{name:"?"}).name;
   $("colTitle").textContent = own ? "Mi colección" : "Colección de " + who;
   const G = allGames().map(g=>({...g, ix:index(g)}));
-  const ids = Object.keys(ST_).filter(id=>byId(id));
+  const ids = [...new Set([...Object.keys(ST_), ...Object.keys(H_||{})])].filter(id=>byId(id));
+  const jugando = G.filter(g=>st(g.id).progreso==="jugando").sort((a,b)=>b.ix-a.ix);
   const pick = f => G.filter(g=>f(st(g.id)));
   const tengo=pick(s=>s.estado==="tengo"), quiero=pick(s=>s.estado==="quiero"), term=pick(s=>s.terminado), comp=pick(s=>s.completo);
   const pend = tengo.filter(g=>!st(g.id).terminado).sort((a,b)=>b.ix-a.ix);
@@ -229,8 +260,9 @@ function renderCol(){
   const pct = (a,b)=> b? Math.round(a/b*100)+"%" : "—";
   const avg = (arr,f)=>{ const v=arr.map(f).filter(x=>x!=null); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; };
   const kpis = `<div class="kpis">
-    <div class="kpi"><b>${tengo.length}</b><span>Tengo</span></div>
+    <div class="kpi"><b>${tengo.length}</b><span>${H_?"En casa (Hogar)":"Tengo"}</span></div>
     <div class="kpi"><b>${quiero.length}</b><span>Quiero</span></div>
+    <div class="kpi"><b>${jugando.length}</b><span>Jugando</span></div>
     <div class="kpi"><b style="color:var(--crit)">${term.length}</b><span>Terminados</span></div>
     <div class="kpi"><b style="color:var(--gold)">${comp.length}</b><span>Al 100%</span></div>
     <div class="kpi"><b>${pct(tengo.filter(g=>st(g.id).terminado).length, tengo.length)}</b><span>De lo que tengo, terminado</span></div>
@@ -255,7 +287,7 @@ function renderCol(){
   const qual = `<div class="tw"><table class="ptable"><thead><tr><th>Grupo</th><th style="text-align:right">Juegos</th><th style="text-align:right">Metacritic</th><th style="text-align:right">Backloggd</th><th style="text-align:right">Índice</th></tr></thead><tbody>${
     [["Terminados",term],["Al 100%",comp],["Tengo sin terminar",pend],["Quiero",quiero]].map(([n,a])=>`<tr><td>${n}</td><td class="n">${a.length}</td><td class="n">${avg(a,g=>g.mc)?.toFixed(1).replace(".",",")??"—"}</td><td class="n">${(v=>v!=null?fmtBL(v):"—")(avg(a,g=>g.bl))}</td><td class="n">${avg(a,g=>g.ix)?.toFixed(1).replace(".",",")??"—"}</td></tr>`).join("")}</tbody></table></div>`;
   const li = arr => arr.length ? `<ul class="mini">${arr.map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}</ul>` : `<p class="empty">Nada aquí todavía.</p>`;
-  out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(ST, VST, who)}
+  out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(id=>effOf(ST,MYHOG,id), id=>effOf(VST,VHOG,id), who)}${own?hogarCard():""}
     <div class="statgrid">
       <div class="card"><h3>Por año</h3>${bars}</div>
       <div style="display:flex;flex-direction:column;gap:20px">
@@ -266,6 +298,7 @@ function renderCol(){
     <div class="statgrid">
       <div class="card"><h3>Pendientes por prioridad</h3><p>Lo que está en la estantería sin terminar, ordenado por el índice de consenso con tus pesos.</p>${li(pend)}</div>
       <div style="display:flex;flex-direction:column;gap:20px">
+        ${jugando.length?`<div class="card"><h3>Jugando</h3>${li(jugando)}</div>`:""}
         <div class="card"><h3>Al 100%</h3>${li(comp.sort((a,b)=>b.ix-a.ix))}</div>
         <div class="card"><h3>Quiero</h3>${li(quiero.sort((a,b)=>b.ix-a.ix))}</div>
       </div>
@@ -317,7 +350,7 @@ function renderCmp(){
 function syncControls(){
   for (const k of ["wc","wp","wa","cc","cp"]) $(k).value=S[k];
   $("owc").textContent=S.wc; $("owp").textContent=S.wp; $("owa").textContent=S.wa; $("occ").textContent=S.cc; $("ocp").textContent=(+S.cp).toFixed(2).replace(".",",");
-  document.querySelectorAll("#show .chip").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.f===S.f); if(["tengo","quiero","pend","terminado","completo"].includes(b.dataset.f)) b.hidden=!ME; });
+  document.querySelectorAll("#show .chip").forEach(b=>{ b.setAttribute("aria-pressed", b.dataset.f===S.f); if(["tengo","quiero","pend","terminado","completo","jugando"].includes(b.dataset.f)) b.hidden=!ME; });
   $("show").querySelector(".sep").hidden=!ME;
   $("plats").innerHTML = [...PLATS,"Otras"].map(p=>`<button class="chip" data-pl="${p}" aria-pressed="${S.pl.includes(p)}">${p}</button>`).join("") + (S.pl.length?`<button class="chip" data-pl="__clear">Quitar filtro</button>`:"");
   $("inc").innerHTML = [["remaster","Remakes y remasters"],["dlc","Expansiones"],["port","Ports y ediciones"]].map(([k,l])=>`<button class="chip" data-inc="${k}" aria-pressed="${!!S.inc[k]}">${l}</button>`).join("");
@@ -361,18 +394,21 @@ async function api(path, opt={}){
   if (!r.ok) throw new Error(path+" "+r.status);
   return r.json();
 }
-const fillMarks = (dst, src) => { for(const k in dst) delete dst[k]; for(const [k,v] of Object.entries(src||{})) dst[k]={estado:v.estado||null, terminado:!!v.terminado, completo:!!v.completo}; };
+const fillMarks = (dst, src) => { for(const k in dst) delete dst[k]; for(const [k,v] of Object.entries(src||{})) dst[k]={estado:v.estado||null, terminado:!!v.terminado, completo:!!v.completo, progreso:v.progreso||null}; };
 async function loadState(){
   const d = await api("state");
   ME = d.me; USERS = d.users||[]; if (VIEW==null || !USERS.some(u=>u.id===VIEW)) VIEW = ME.id;
   fillMarks(ST, d.marks);
+  HOGINFO = d.hogar || null; MYHOG = HOGINFO && Array.isArray(HOGINFO.juegos) ? matchHogar(HOGINFO.juegos) : null;
   for (const k in FIS) delete FIS[k]; Object.assign(FIS, d.fisica||{});
   if (VIEW!==ME.id) await loadView(VIEW, false);
   render();
 }
 async function loadView(id, draw=true){
   VIEW = id;
-  if (id===ME.id) fillMarks(VST, {}); else { try { fillMarks(VST, (await api("marks?u="+id)).marks); } catch(e){ fillMarks(VST, {}); } }
+  VHOG = null;
+  if (id===ME.id) fillMarks(VST, {}); else { try { const d = await api("marks?u="+id); fillMarks(VST, d.marks);
+    VHOG = d.hogar ? (d.hogar.id===(ME.hogar&&ME.hogar.id) ? MYHOG : matchHogar(d.hogar.juegos)) : null; } catch(e){ fillMarks(VST, {}); } }
   if (draw) render();
 }
 async function cycleFis(id){
@@ -388,13 +424,17 @@ async function cycleFis(id){
 }
 async function toggleOwn(id, kind){
   if(!ME) return;
-  const prev = {...st(id)}; const s = {...prev};
+  if (kind==="tengo" && MYHOG) return;
+  const prev = {...(ST[id]||{})}; const s = {...prev};
   if (kind==="tengo"||kind==="quiero") s.estado = s.estado===kind ? null : kind;
   if (kind==="terminado"){ s.terminado = !s.terminado; if(!s.terminado) s.completo=false; }
   if (kind==="completo"){ s.completo = !s.completo; if(s.completo) s.terminado=true; }
-  const empty = !s.estado && !s.terminado && !s.completo;
+  if (kind==="jugando"||kind==="abandonado"){ s.progreso = s.progreso===kind ? null : kind; if(s.progreso){ s.terminado=false; s.completo=false; } }
+  if (s.terminado) s.progreso = null;
+  if (MYHOG && s.estado==="tengo") s.estado = null;
+  const empty = !s.estado && !s.terminado && !s.completo && !s.progreso;
   if (empty) delete ST[id]; else ST[id]=s; render();
-  try { await api("marks/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo})}); }
+  try { await api("marks/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo, progreso:s.progreso||null})}); }
   catch(err){ if(Object.keys(prev).length) ST[id]=prev; else delete ST[id]; render(); toast("No se pudo guardar"); }
 }
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, 3000); }
