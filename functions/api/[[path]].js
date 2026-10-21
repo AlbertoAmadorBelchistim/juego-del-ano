@@ -158,6 +158,23 @@ async function hogarJuegos(env, binding) {
   try { return await hogarCall(env, binding, "/ingesta/juegos"); } catch (e) { return { error: String(e.message || e) }; }
 }
 
+/* ---------- IGDB (API oficial; claves IGDB_CLIENT_ID / IGDB_CLIENT_SECRET como secretos de Pages) ---------- */
+const IGDB_ENDPOINTS = new Set(["games", "covers", "genres", "platforms", "search", "alternative_names", "external_games"]);
+async function igdbToken(env) {
+  const c = await kvGet(env, "igdb_token");
+  if (c && c.exp > Date.now() + 60_000) return c.token;
+  const r = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${encodeURIComponent(env.IGDB_CLIENT_ID)}&client_secret=${encodeURIComponent(env.IGDB_CLIENT_SECRET)}&grant_type=client_credentials`, { method: "POST" });
+  if (!r.ok) throw new Error("twitch token " + r.status);
+  const j = await r.json();
+  await kvSet(env, "igdb_token", { token: j.access_token, exp: Date.now() + j.expires_in * 1000 });
+  return j.access_token;
+}
+async function igdb(env, endpoint, query) {
+  const r = await fetch("https://api.igdb.com/v4/" + endpoint, { method: "POST", headers: { "Client-ID": env.IGDB_CLIENT_ID, Authorization: "Bearer " + await igdbToken(env), "Content-Type": "text/plain" }, body: query });
+  if (!r.ok) throw new Error(`igdb ${endpoint} ${r.status} ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+
 /* ---------- rutas ---------- */
 export async function onRequest({ request, env, params, waitUntil }) {
   try {
@@ -224,6 +241,19 @@ export async function onRequest({ request, env, params, waitUntil }) {
       for (const m of members) await step("progreso y Quiero " + m.persona, async () => { await pushPersona(env, request, m); return await kvGet(env, "hogar_persona_" + m.id); });
       await step("listas y notas", () => pushListas(env, request, me.binding, true));
       return json({ log });
+    }
+
+    if (head === "igdb" && method === "POST") {      // consultas de lectura a IGDB: {endpoint, query} o {batch:[{endpoint, query}, ...]}
+      if (!env.IGDB_CLIENT_ID || !env.IGDB_CLIENT_SECRET) return json({ error: "faltan las claves de IGDB" }, 400);
+      const b = await request.json();
+      const list = Array.isArray(b.batch) ? b.batch.slice(0, 8) : [b];
+      const out = [];
+      for (const q of list) {
+        if (!IGDB_ENDPOINTS.has(q.endpoint) || typeof q.query !== "string" || q.query.length > 4000) { out.push({ error: "consulta no permitida" }); continue; }
+        try { out.push(await igdb(env, q.endpoint, q.query)); } catch (e) { out.push({ error: String(e.message || e) }); }
+        await new Promise(r => setTimeout(r, 260));      // límite de IGDB: 4 peticiones por segundo
+      }
+      return json(Array.isArray(b.batch) ? out : out[0]);
     }
 
     if (head === "hogar" && arg === "estado" && method === "GET") {
