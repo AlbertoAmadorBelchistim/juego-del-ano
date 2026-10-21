@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Juego del Año 2014–2026</title>
+<title>Juego del Año 1998–2026</title>
 <meta name="description" content="Los mejores juegos de cada año según la crítica, los jugadores y los premios, con tu colección.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M8 4h16v6a8 8 0 0 1-16 0z' fill='%23e4b75a'/><rect x='14' y='17' width='4' height='6' fill='%23e4b75a'/><rect x='9' y='24' width='14' height='4' rx='1' fill='%23e4b75a'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,6 +40,11 @@ header p{margin:0;color:var(--muted);max-width:66ch}
 /* barra fija */
 .sticky{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
 .tabs,.years{display:flex;flex-wrap:wrap;gap:6px}
+.years{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.years button{flex:none}
+.crow .thumb{object-fit:cover}
+.mp{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;background:var(--gold-soft);color:var(--gold-ink);border:1px solid var(--gold);vertical-align:middle}
+.ctl select,.ctl input[type=search]{font:inherit;font-size:13px;padding:6px 8px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--fg);max-width:100%}
 .tabs button,.years button,.chip{font-family:var(--mono);font-size:13px;padding:6px 10px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
 .tabs button{font-family:var(--display);font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;padding:4px 12px}
 .tabs button[aria-pressed="true"],.years button[aria-pressed="true"],.chip[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
@@ -218,9 +223,9 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Crítica · Jugadores · Premios · 2014 – 2026</div>
+    <div class="eyebrow">Crítica · Jugadores · Premios · 1998 – 2026</div>
     <h1>El mejor juego <span>de cada año</span></h1>
-    <p>Para cada año, los nominados al premio gordo de The Game Awards, DICE, GDC, BAFTA y Golden Joystick, más los 20 mejor valorados en Metacritic y en Backloggd, remasters incluidos. Se ordenan con un índice que mezcla crítica, jugadores y premios; los pesos y las notas de corte son tuyos.</p>
+    <p>Para cada año desde 1998, los nominados al premio gordo de The Game Awards (antes, los Spike VGA), DICE, GDC, BAFTA y Golden Joystick, más los 20 mejor valorados en Metacritic y en Backloggd, remasters incluidos. Se ordenan con un índice que mezcla crítica, jugadores y premios; los pesos y las notas de corte son tuyos.</p>
   </header>
 
   <div class="boot" id="boot">Cargando datos…</div>
@@ -229,6 +234,7 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
     <div class="tabs" role="group" aria-label="Sección">
       <button data-tab="rank" aria-pressed="true">Ranking anual</button>
       <button data-tab="y26" aria-pressed="false">2026 en curso</button>
+      <button data-tab="cat" aria-pressed="false">Catálogo</button>
       <button data-tab="col" aria-pressed="false">Mi colección</button>
       <button data-tab="tga" aria-pressed="false">Palmarés TGA</button>
       <button data-tab="cmp" aria-pressed="false">Premios comparados</button>
@@ -273,6 +279,14 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
     </div>
   </section>
 
+  <!-- CATÁLOGO -->
+  <section id="tab-cat" class="sec" aria-label="Catálogo" hidden>
+    <h2>Catálogo de todos los tiempos</h2>
+    <p>Todo lo que tiene 75 o más en Metacritic, los mejor valorados de Backloggd y todos los juegos que hay en casa. El índice pondera a partes iguales crítica (Metacritic) y jugadores (Backloggd), y ajusta las notas con pocos votos hacia la media.</p>
+    <div class="controls" id="catCtl"></div>
+    <div id="catOut" style="display:flex;flex-direction:column;gap:12px"></div>
+  </section>
+
   <!-- COLECCIÓN -->
   <section id="tab-col" class="sec" aria-label="Mi colección" hidden>
     <h2 id="colTitle">Mi colección</h2>
@@ -299,6 +313,8 @@ details summary{cursor:pointer;font-size:13px;color:var(--muted)}
   <footer>
     <div><strong>Fuentes.</strong> Palmarés de The Game Awards, DICE, GDC, BAFTA y Golden Joystick: Wikipedia en inglés. Notas de crítica: Metacritic (nota agregada actual; el top 20 exige al menos 25 críticas). Notas de jugadores y carátulas: Backloggd (media calculada sobre la distribución de votos; el top 20 exige 2.000 votos hasta 2023 y 1.000 en 2024–2025). Datos históricos recogidos el 11 de octubre de 2026. Plataformas: las que lista Metacritic para cada juego, incluidas versiones posteriores. Edición física: “Sí” cuando Wikidata registra un formato físico (disco, cartucho, tarjeta) o el artículo de Wikipedia menciona una edición física o distribuidoras como Limited Run Games; “Solo digital” cuando Wikipedia lo dice expresamente; el resto queda sin confirmar y se puede marcar a mano tocando la etiqueta.</div>
     <div><strong>Índice.</strong> Crítica = Metascore; jugadores = media de Backloggd × 20, ajustada por número de votos (se mezcla con la media del año como si tuviera 1.000 votos más, para que una nota con pocos votos no se dispare); premios = ganar el TGA 10 puntos, otro premio 5, nominación al TGA 3, a otro 1,5, sobre un máximo de 30. Si falta una nota, se reparte su peso entre las demás. Golden Joystick solo publica ganador.</div>
+    <div><strong>1998–2013.</strong> Antes de The Game Awards, su lugar lo ocupan los Spike Video Game Awards (2003–2013). DICE premia desde 1998, GDC desde 2000, BAFTA desde 2003 y Golden Joystick desde 2002; los puntos de premios de cada año se calculan solo sobre los premios que existían. En esos años el top 20 de Metacritic exige 15 críticas y el de Backloggd 1.000 votos y nota en Metacritic.</div>
+    <div><strong>Catálogo.</strong> Metacritic ≥75 (API, octubre de 2026), Backloggd (fichas leídas en octubre de 2026 y, en su defecto, junio de 2025) y todos los juegos de Hogar. Índice: 50 % crítica y 50 % jugadores, cada nota ajustada por su número de votos; si falta una, esa mitad vale la media.</div>
     <div>Un mismo juego puede figurar en dos años si se relanzó (remasters, ediciones de Switch 2). Ports, ediciones completas, recopilatorios y versiones de Switch 2 quedan fuera del ranking por defecto (se pueden incluir); remakes, remasters y expansiones cuentan, como en The Game Awards. 2026 es un año en curso: sus candidatos se recalculan cada semana (Backloggd con al menos 500 votos).</div>
   </footer>
 </div>

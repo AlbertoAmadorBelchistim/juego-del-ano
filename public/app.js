@@ -4,8 +4,11 @@ const getJSON = async u => { const r = await fetch(u, {cache: "no-cache"}); if (
 const [GAMES, SNAP26, DATA, MAP, OTHER] = await Promise.all(["games","y2026","tga","map","other"].map(n => getJSON("data/" + n + ".json")));
 const HALIAS = await getJSON("data/hogar_alias.json").catch(() => ({}));
 const HIST_YEARS = DATA.map(d=>d.year);
-const YEARS = [...HIST_YEARS, 2026];
+const YEARS = [...new Set([...GAMES.map(g=>g.y), ...HIST_YEARS, 2026])].sort((a,b)=>a-b);
 const AWK = [["TGA","TGA"],["DICE","DICE"],["GDC","GDC"],["BAFTA","BAFTA"],["Golden Joystick","Joystick"]];
+// Años en que existe cada premio (antes de 2014, «TGA» es su antecesor: los Spike Video Game Awards, 2003–2013)
+const AW_FROM = {TGA:2003, DICE:1998, GDC:2000, BAFTA:2003, "Golden Joystick":2002};
+const awardExists = (k,y) => y >= (AW_FROM[k]||0);
 const GROUPS = ["Artesanía y dirección","Géneros","Indie, plataformas y servicio","Comunidad y extras","Esports y creadores","Honoríficos"];
 const PLATS = ["PC","PS5","PS4","Xbox Series","Xbox One","Switch 2","Switch"];
 const $ = id => document.getElementById(id);
@@ -43,10 +46,10 @@ let Y26 = {meta: SNAP26.meta, games: SNAP26.games, live:false};
 function allGames(){ return [...GAMES, ...Y26.games.map(g=>({...g, y:2026}))].map(g=>({...g, k:kindOf(g.t,g.y)})); }
 const eligible = g => g.k==="nuevo" || S.inc[g.k] || hasAwStrict(g);
 function hasAwStrict(g){ return g.y!==2026 && Object.keys(g.aw||{}).length>0; }
-function byId(id){ return allGames().find(g=>g.id===id); }
+function byId(id){ return allGames().find(g=>g.id===id) || (CAT && CAT.games.find(g=>g.id===id)); }
 
 /* ---------- índice ---------- */
-function awPts(g){ let p=0; for(const [k] of AWK){ const s=g.aw[k]; if(!s) continue; p += k==="TGA" ? (s==="won"?10:3) : (s==="won"?5:1.5); } return p/30*100; }
+function awPts(g){ let p=0, max=0; for(const [k] of AWK){ if(!awardExists(k,g.y)) continue; max += k==="TGA"?10:5; const s=g.aw[k]; if(!s) continue; p += k==="TGA" ? (s==="won"?10:3) : (s==="won"?5:1.5); } return max ? p/max*100 : 0; }
 const BL_PRIOR=1000; const _blMean={};
 function blMean(y){ if(_blMean[y]!=null) return _blMean[y]; const v=allGames().filter(g=>g.y===y&&g.bl!=null); const n=v.reduce((a,g)=>a+g.bln,0); return _blMean[y]= n? v.reduce((a,g)=>a+g.bl*g.bln,0)/n : 4; }
 function blAdj(g){ if(g.bl==null) return null; const m=blMean(g.y); return (g.bln*g.bl + BL_PRIOR*m)/(g.bln+BL_PRIOR); }
@@ -69,7 +72,8 @@ const normH = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 function matchHogar(items){
   if(!Array.isArray(items)) return null;
   const bySlug={}, byNorm={};
-  for(const g of allGames()){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||[]).push(g.id); }
+  const pool = [...allGames(), ...((CAT&&CAT.games)||[])];
+  for(const g of pool){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||[]).push(g.id); }
   const H={}, aliasOf={};
   for(const [gid, hs] of Object.entries(HALIAS)) if(Array.isArray(hs)) hs.forEach(h=>(aliasOf[h]=aliasOf[h]||[]).push(gid));
   for(const it of items){ const ids = aliasOf[it.id] || (it.slug && bySlug[it.slug]) || byNorm[normH(it.titulo)] || [];
@@ -88,10 +92,10 @@ const onPlat = g => !S.pl.length || (g.pl||[]).some(p => S.pl.includes(p) || (S.
 
 /* ---------- piezas ---------- */
 function spr(g){ if(!g||!g.sp) return ""; const [c,r,C,R]=g.sp; return `background-image:url(sprites/${g.y}.jpg);background-size:${C*100}% ${R*100}%;background-position:${C>1?c/(C-1)*100:0}% ${R>1?r/(R-1)*100:0}%`; }
-function coverStyle(g){ if(g&&g.img) return `background-image:url('${g.img}');background-size:cover;background-position:center`; return spr(g); }
+function coverStyle(g){ if(g&&g.img) return `background-image:url('${g.img}');background-size:cover;background-position:center`; if(g&&!g.sp&&g.cv) return `background-image:url('https://images.igdb.com/igdb/image/upload/t_cover_small/${g.cv}.jpg');background-size:cover;background-position:center`; if(g&&!g.sp&&g.mcimg) return `background-image:url('https://www.metacritic.com/a/img/catalog${g.mcimg}');background-size:cover;background-position:center`; return spr(g); }
 function thumb(g, cls="thumb"){ const s=coverStyle(g); return s ? `<div class="${cls}" role="img" aria-label="Carátula de ${esc(g.t)}" style="${s}"></div>` : `<div class="${cls}">${esc(((g&&g.t)||"?")[0])}</div>`; }
 function pips(g){ const lab26 = g.y===2026 ? (Y26.meta.awardLabels||{}) : {};
-  return `<span class="pips">${AWK.map(([k,lab])=>{ const s=g.aw[k]||""; const tip= lab26[k] && s ? lab26[k] : s==="won"?`Ganó: ${k}`:s==="nom"?`Nominado: ${k}`:`Sin nominación en ${k}`; return `<span class="pip ${s}" title="${esc(tip)}">${lab}</span>`; }).join("")}</span>`; }
+  return `<span class="pips">${AWK.filter(([k])=>awardExists(k,g.y)).map(([k,lab0])=>{ const lab = k==="TGA" && g.y<2014 ? "VGA" : lab0; k = k==="TGA" && g.y<2014 ? "Spike VGA" : k; const s=g.aw[k==="Spike VGA"?"TGA":k]||""; const tip= lab26[k] && s ? lab26[k] : s==="won"?`Ganó: ${k}`:s==="nom"?`Nominado: ${k}`:`Sin nominación en ${k}`; return `<span class="pip ${s}" title="${esc(tip)}">${lab}</span>`; }).join("")}</span>`; }
 function scores(g){
   const c = g.mc!=null ? `<span class="sc c${g.mc>=S.cc?" pass":""}" title="Metacritic${g.mcn?` · ${g.mcn} críticas`:""}">MC ${g.mc}</span>` : `<span class="sc na" title="Sin nota en Metacritic">MC —</span>`;
   const p = g.bl!=null ? `<span class="sc p${g.bl>=S.cp-1e-9?" pass":""}" title="Backloggd · ${g.bln} votos · en el índice cuenta como ${fmtBL(blAdj(g))} (ajustada por número de votos)">BL ${fmtBL(g.bl)} <span style="opacity:.75">· ${fmtN(g.bln)}</span></span>` : `<span class="sc na" title="Sin nota en Backloggd">BL —</span>`;
@@ -349,17 +353,81 @@ function tgaSearch(q){
 /* ---------- comparativa ---------- */
 function renderCmp(){
   const cols=[["DICE"],["GDC"],["BAFTA"],["Golden Joystick"]];
-  const head=`<tr><th>Año</th><th>The Game Awards</th>${cols.map(([k])=>`<th>${k}</th>`).join("")}<th>Nº1 Metacritic</th><th>Nº1 Backloggd</th><th>Coinciden</th></tr>`;
-  const rows=[...DATA].reverse().map(d=>{ const w=d.categories[0].winner, o=OTHER[d.year]||{}; let c=0, n=0;
-    const cell = name => { n++; const s=norm(name)===norm(w); if(s)c++; return `<td class="${s?"same":""}">${esc(name)}</td>`; };
-    const ys=allGames().filter(g=>g.y===d.year && (g.k==="nuevo"||g.k==="remaster"||g.k==="dlc"));
+  const head=`<tr><th>Año</th><th>TGA / VGA</th>${cols.map(([k])=>`<th>${k}</th>`).join("")}<th>Nº1 Metacritic</th><th>Nº1 Backloggd</th><th>Coinciden</th></tr>`;
+  const years = YEARS.filter(y=>y<2026 && (DATA.some(d=>d.year===y) || OTHER[y])).reverse();
+  const rows=years.map(year=>{ const d=DATA.find(x=>x.year===year), o=OTHER[year]||{};
+    const w = d ? d.categories[0].winner : (o.VGA ? o.VGA.winner : (o.DICE ? o.DICE.winner : null)); let c=0, n=0;
+    const cell = name => { n++; const s=w && norm(name)===norm(w); if(s)c++; return `<td class="${s?"same":""}">${esc(name)}</td>`; };
+    const ys=allGames().filter(g=>g.y===year && (g.k==="nuevo"||g.k==="remaster"||g.k==="dlc"));
     const mcTop=[...ys].filter(g=>g.mc!=null && g.via.includes("mc")).sort((a,b)=>b.mc-a.mc||(b.mcn||0)-(a.mcn||0))[0];
     const blTop=[...ys].filter(g=>g.bl!=null && g.via.includes("bl")).sort((a,b)=>b.bl-a.bl)[0];
-    const tg=findG(d.year,w); const sameG = g => g && tg && g.id===tg.id;
+    const tg=w?findG(year,w):null; const sameG = g => g && tg && g.id===tg.id;
     const extra = (g,isMc) => { n++; if(sameG(g)) c++; return g?`<td class="${sameG(g)?"same":""}">${esc(g.t)} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">${isMc?g.mc:fmtBL(g.bl)}</span></td>`:`<td class="k">—</td>`; };
-    return `<tr><td class="y">${d.year}</td><td><strong>${esc(w)}</strong></td>${cols.map(([k])=>o[k]?cell(o[k].winner):`<td class="k">—</td>`).join("")}${extra(mcTop,true)}${extra(blTop,false)}<td class="k">${c} de ${n}</td></tr>`; }).join("");
+    const first = d||o.VGA ? `<td><strong>${esc(w)}</strong>${!d?` <span class="muted" style="font-size:11px">VGA</span>`:""}</td>` : `<td class="k">—</td>`;
+    return `<tr><td class="y">${year}</td>${first}${cols.map(([k])=>o[k]?cell(o[k].winner):`<td class="k">—</td>`).join("")}${extra(mcTop,true)}${extra(blTop,false)}<td class="k">${c} de ${n}</td></tr>`; }).join("");
   $("cmpT").innerHTML=`<thead>${head}</thead><tbody>${rows}</tbody>`;
 }
+
+
+/* ---------- catálogo de todos los tiempos ---------- */
+let CAT = null, CAT_LOADING = false;
+const CATDEF = {q:"", sort:"ix", dec:"", gen:"", pl:"", min:0, f:"all", n:100};
+if(!S.cat || typeof S.cat!=="object") S.cat = {...CATDEF};
+async function loadCat(){
+  if (CAT || CAT_LOADING) return; CAT_LOADING = true;
+  try { CAT = await getJSON("data/catalogo.json"); if (HOGINFO && Array.isArray(HOGINFO.juegos)) MYHOG = matchHogar(HOGINFO.juegos); }
+  catch(e){ CAT = {games:[], error:String(e.message||e)}; }
+  CAT_LOADING = false; render();
+}
+const catCover = g => g.cv ? `https://images.igdb.com/igdb/image/upload/t_cover_small/${g.cv}.jpg` : (g.mcimg ? `https://www.metacritic.com/a/img/catalog${g.mcimg}` : "");
+function catFilter(){
+  const c = S.cat, q = normH(c.q);
+  return CAT.games.filter(g=>{
+    if (q && !normH(g.t).includes(q)) return false;
+    if (c.dec && String(Math.floor((g.y||0)/10)*10) !== c.dec) return false;
+    if (c.gen && !(g.gen||[]).includes(c.gen)) return false;
+    if (c.pl && !(g.pl||[]).includes(c.pl)) return false;
+    if (c.min && !((g.bln||0) >= c.min)) return false;
+    const s = st(g.id);
+    switch(c.f){ case "casa": return !!s.casa; case "nocasa": return !s.casa; case "term": return !!s.terminado;
+      case "pend": return !!s.casa && !s.terminado; case "quiero": return s.estado==="quiero"; case "mp": return !!g.mp; }
+    return true;
+  }).sort((a,b)=> c.sort==="mc" ? (b.mc??-1)-(a.mc??-1) : c.sort==="bl" ? (b.bla??-1)-(a.bla??-1) : c.sort==="y" ? (b.y||0)-(a.y||0) || b.ix-a.ix : b.ix-a.ix);
+}
+function renderCat(){
+  const out = $("catOut");
+  if (!CAT){ out.innerHTML = `<p class="empty">Cargando catálogo…</p>`; loadCat(); return; }
+  if (CAT.error){ out.innerHTML = `<p class="empty">No se pudo cargar el catálogo (${esc(CAT.error)}).</p>`; return; }
+  const c = S.cat, opt = (v,l,cur)=>`<option value="${esc(v)}"${String(cur)===String(v)?" selected":""}>${esc(l)}</option>`;
+  const decs = [...new Set(CAT.games.map(g=>Math.floor((g.y||0)/10)*10))].filter(Boolean).sort((a,b)=>b-a);
+  const gens = Object.entries(CAT.games.flatMap(g=>g.gen||[]).reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{})).sort((a,b)=>b[1]-a[1]).map(([x])=>x);
+  const pls = Object.entries(CAT.games.flatMap(g=>g.pl||[]).reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{})).sort((a,b)=>b[1]-a[1]).map(([x])=>x);
+  $("catCtl").innerHTML = `
+    <div class="ctl wide"><label for="catQ">Buscar</label><input id="catQ" type="search" value="${esc(c.q)}" placeholder="Título…" autocomplete="off"></div>
+    <div class="ctl"><label for="catSort">Ordenar por</label><select id="catSort">${opt("ix","Índice (crítica + jugadores)",c.sort)}${opt("mc","Metacritic",c.sort)}${opt("bl","Backloggd (ajustado)",c.sort)}${opt("y","Más recientes",c.sort)}</select></div>
+    <div class="ctl"><label for="catDec">Década</label><select id="catDec">${opt("","Todas",c.dec)}${decs.map(d=>opt(String(d),d+"s",c.dec)).join("")}</select></div>
+    <div class="ctl"><label for="catGen">Género</label><select id="catGen">${opt("","Todos",c.gen)}${gens.map(x=>opt(x,x,c.gen)).join("")}</select></div>
+    <div class="ctl"><label for="catPl">Plataforma</label><select id="catPl">${opt("","Todas",c.pl)}${pls.map(x=>opt(x,x,c.pl)).join("")}</select></div>
+    <div class="ctl"><label for="catMin">Votos Backloggd</label><select id="catMin">${[0,500,1000,5000,20000].map(v=>opt(v, v?("≥ "+fmtN(v)):"Sin mínimo", c.min)).join("")}</select></div>
+    <div class="ctl wide"><label>Mostrar</label><div class="chips" id="catF">${[["all","Todos"],["mp","Must play"],...(ME?[["casa","En casa"],["nocasa","No los tengo"],["pend","En casa sin terminar"],["term","Terminados"],["quiero","Quiero"]]:[])].map(([k,l])=>`<button class="chip" data-catf="${k}" aria-pressed="${c.f===k}">${l}</button>`).join("")}</div></div>`;
+  const L = catFilter(), shown = L.slice(0, c.n);
+  const row = (g,i) => { const sc = catCover(g);
+    return `<div class="row crow" id="g-${g.id}">
+      <div class="n">${i+1}</div>
+      ${sc?`<img class="thumb" loading="lazy" src="${esc(sc)}" alt="Carátula de ${esc(g.t)}" referrerpolicy="no-referrer">`:`<div class="thumb">${esc((g.t||"?")[0])}</div>`}
+      <div class="info"><div class="t">${g.bls?`<a href="https://backloggd.com/games/${g.bls}/" target="_blank" rel="noopener">${esc(g.t)}</a>`:esc(g.t)} <span class="muted" style="font-weight:400">${g.y||""}</span></div>
+        <div class="meta">${g.mc!=null?`<span class="sc c" title="Metacritic · ${g.mcn||"?"} críticas">MC ${g.mc}</span>`:`<span class="sc na">MC —</span>`}${g.bl!=null?`<span class="sc p" title="Backloggd · ${fmtN(g.bln)} votos · ajustada ${fmtBL(g.bla)}">BL ${fmtBL(g.bl)} <span style="opacity:.75">· ${fmtN(g.bln)}</span></span>`:`<span class="sc na">BL —</span>`}${g.mp?`<span class="mp" title="Must play de Metacritic: 90 o más con 15 críticas o más">Must play</span>`:""}${g.goty?`<span class="mp" title="${esc(g.goty)}">★ GOTY</span>`:""}</div>
+        ${g.pl&&g.pl.length?`<span class="plats">${esc(g.pl.slice(0,6).join(" · "))}</span>`:""}
+        ${(g.gen||[]).length?`<div class="via">${esc(g.gen.slice(0,4).join(" · "))}</div>`:""}</div>
+      <div class="right"><div class="idx">${g.ix.toFixed(1).replace(".",",")}</div><div class="bar"><i style="width:${Math.max(0,Math.min(100,g.ix))}%"></i></div>${ownBtns(g)}</div>
+    </div>`; };
+  out.innerHTML = `<p class="muted" style="margin:0">${fmtN(L.length)} juegos${L.length!==CAT.games.length?` de ${fmtN(CAT.games.length)}`:""} · datos de ${esc(CAT.meta?.updated||"—")}</p>
+    <div class="rank">${shown.map(row).join("")}</div>
+    ${L.length>shown.length?`<button class="chip" id="catMore" style="align-self:center">Ver ${Math.min(100,L.length-shown.length)} más</button>`:""}`;
+}
+document.addEventListener("input", e=>{ if(e.target.id==="catQ"){ S.cat={...S.cat, q:e.target.value, n:100}; clearTimeout(renderCat._t); renderCat._t=setTimeout(()=>{ const pos=e.target.selectionStart; render(); const q=$("catQ"); if(q){ q.focus(); q.setSelectionRange(pos,pos);} }, 250); } });
+document.addEventListener("change", e=>{ const m={catSort:"sort",catDec:"dec",catGen:"gen",catPl:"pl",catMin:"min"}[e.target.id]; if(m){ S.cat={...S.cat,[m]: m==="min" ? +e.target.value : e.target.value, n:100}; render(); } });
+document.addEventListener("click", e=>{ const t=e.target.closest("button"); if(!t) return; if(t.dataset.catf){ S.cat={...S.cat,f:t.dataset.catf,n:100}; render(); } else if(t.id==="catMore"){ S.cat={...S.cat,n:S.cat.n+100}; render(); } });
 
 /* ---------- controles ---------- */
 function syncControls(){
@@ -372,13 +440,13 @@ function syncControls(){
   $("plHint").textContent = S.pl.length ? "(cualquiera de las elegidas)" : "";
   const tabKey = S.tab==="rank" && S.year===2026 ? "y26" : S.tab;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.tab===tabKey));
-  ["rank","col","tga","cmp"].forEach(t=>$("tab-"+t).hidden = t!==S.tab);
+  ["rank","col","tga","cmp","cat"].forEach(t=>$("tab-"+t).hidden = t!==S.tab);
   $("years").hidden = !(S.tab==="rank" || S.tab==="tga");
   const ys = S.tab==="tga" ? HIST_YEARS : YEARS;
   const cur = S.tab==="tga" && !HIST_YEARS.includes(S.year) ? 2025 : S.year;
   $("years").innerHTML = ys.map(y=>`<button data-y="${y}" aria-pressed="${y===cur}">${y}</button>`).join("");
 }
-function render(){ store.set("goty-ui",S); syncControls(); if(S.tab==="rank") renderRank(); if(S.tab==="col") renderCol(); if(S.tab==="tga") renderTGA(); if(S.tab==="cmp") renderCmp(); }
+function render(){ store.set("goty-ui",S); syncControls(); if(S.tab==="rank") renderRank(); if(S.tab==="col") renderCol(); if(S.tab==="tga") renderTGA(); if(S.tab==="cmp") renderCmp(); if(S.tab==="cat") renderCat(); }
 
 for (const k of ["wc","wp","wa","cc","cp"]) $(k).addEventListener("input", e=>{ S[k]=+e.target.value; render(); });
 document.addEventListener("click", e=>{

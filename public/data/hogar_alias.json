@@ -1,12 +1,168 @@
-{"_nota": "Equivalencias manuales juego de la web -> ids de objeto en Hogar, cuando el título no empareja solo.",
- "2017-assassins-creed-origins": [1055],
- "2016-uncharted-4-a-thief-s-end": [87],
- "2015-metal-gear-solid-v-the-phantom-pain": [1399, 1049],
- "2022-the-last-of-us-part-i": [1249, 1061],
- "2020-the-last-of-us-part-ii": [1522, 86],
- "2023-resident-evil-4--1": [1056, 1256],
- "2017-rayman-legends-definitive-edition": [1040],
- "2017-nier-automata": [1085, 1251],
- "2019-death-stranding": [1286],
- "2017-persona-5": [84],
- "2020-persona-5-royal": [1081, 1520]}
+{
+ "_nota": "Equivalencias manuales juego de la web -> ids de objeto en Hogar, cuando el título no empareja solo.",
+ "2017-assassins-creed-origins": [
+  1055
+ ],
+ "2016-uncharted-4-a-thief-s-end": [
+  87
+ ],
+ "2015-metal-gear-solid-v-the-phantom-pain": [
+  1399,
+  1049
+ ],
+ "2022-the-last-of-us-part-i": [
+  1249,
+  1061
+ ],
+ "2020-the-last-of-us-part-ii": [
+  1522,
+  86
+ ],
+ "2023-resident-evil-4--1": [
+  1056,
+  1256
+ ],
+ "2017-rayman-legends-definitive-edition": [
+  1040
+ ],
+ "2017-nier-automata": [
+  1085,
+  1251
+ ],
+ "2019-death-stranding": [
+  1286
+ ],
+ "2017-persona-5": [
+  84
+ ],
+ "2020-persona-5-royal": [
+  1081,
+  1520
+ ],
+ "2015-lego-jurassic-world": [
+  85
+ ],
+ "2020-assassins-creed-valhalla": [
+  1046
+ ],
+ "2018-dragon-quest-xi-echoes-of-an-elusive-age": [
+  1088
+ ],
+ "2017-south-park-the-fractured-but-whole": [
+  1098
+ ],
+ "2018-dark-souls-trilogy": [
+  1236
+ ],
+ "2018-castlevania-requiem-symphony-of-the-night-and-rondo-of-blood": [
+  1254
+ ],
+ "2023-hitman-world-of-assassination": [
+  1261
+ ],
+ "2014-phoenix-wright-ace-attorney-trilogy": [
+  1267
+ ],
+ "2012-journey": [
+  1310
+ ],
+ "2016-inside": [
+  1335
+ ],
+ "2018-kingdom-come-deliverance": [
+  1336
+ ],
+ "2021-little-nightmares-ii": [
+  1351
+ ],
+ "2022-doom-the-classics-collection": [
+  1358
+ ],
+ "2023-bustafellows-season-2": [
+  1386
+ ],
+ "2019-touhou-luna-nights": [
+  1419
+ ],
+ "2023-wonder-boy-anniversary-collection": [
+  1420
+ ],
+ "2024-emio-the-smiling-man-famicom-detective-club--1": [
+  1424
+ ],
+ "2020-coffee-talk": [
+  1431
+ ],
+ "2017-little-nightmares": [
+  1436
+ ],
+ "2023-dave-the-diver": [
+  1444
+ ],
+ "1997-dodonpachi": [
+  1445
+ ],
+ "2025-shuten-order": [
+  1450
+ ],
+ "2025-lost-records-bloom-and-rage": [
+  1463
+ ],
+ "2024-master-detective-archives-rain-code-plus": [
+  1464
+ ],
+ "2014-monument-valley": [
+  1465
+ ],
+ "2024-clock-tower-rewind": [
+  1474
+ ],
+ "2025-mafia-the-old-country": [
+  1475
+ ],
+ "2024-still-wakes-the-deep": [
+  1476
+ ],
+ "2015-raging-loop": [
+  1482
+ ],
+ "2016-no-man-s-sky": [
+  1494
+ ],
+ "2021-super-monkey-ball-banana-mania": [
+  1496
+ ],
+ "2024-iwakura-aria": [
+  1497
+ ],
+ "2022-sonic-frontiers": [
+  1498
+ ],
+ "2025-wuchang-fallen-feathers": [
+  1501
+ ],
+ "2023-luck-be-a-landlord": [
+  1502
+ ],
+ "2025-bye-sweet-carole": [
+  1507
+ ],
+ "2025-little-nightmares-iii--1": [
+  1508
+ ],
+ "2025-lost-soul-aside": [
+  1509
+ ],
+ "2026-fatal-frame-ii-crimson-butterfly-remake": [
+  1516
+ ],
+ "2026-life-is-strange-reunion": [
+  1519
+ ],
+ "2017-cuphead": [
+  1250
+ ],
+ "2018-dead-cells": [
+  1356
+ ]
+}

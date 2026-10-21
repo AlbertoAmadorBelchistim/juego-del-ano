@@ -1,0 +1,610 @@
+{
+  "1998": {
+    "DICE": {
+      "winner": "The Legend of Zelda: Ocarina of Time",
+      "nominees": [
+        "Banjo-Kazooie",
+        "Grim Fandango",
+        "Half-Life",
+        "Metal Gear Solid",
+        "Sid Meier's Alpha Centauri",
+        "Star Wars: Rogue Squadron"
+      ]
+    }
+  },
+  "1999": {
+    "DICE": {
+      "winner": "The Sims",
+      "nominees": [
+        "Age of Empires II: The Age of Kings",
+        "Donkey Kong 64",
+        "Pokémon Yellow",
+        "Soulcalibur",
+        "Unreal Tournament"
+      ]
+    }
+  },
+  "2000": {
+    "DICE": {
+      "winner": "Diablo II",
+      "nominees": [
+        "Age of Empires II: The Conquerors",
+        "Asheron's Call",
+        "Baldur's Gate II: Shadows of Amn",
+        "Banjo-Tooie",
+        "Chrono Cross",
+        "Command & Conquer: Red Alert 2",
+        "Deus Ex",
+        "Disney's Magic Artist 3D",
+        "EverQuest: The Ruins of Kunark",
+        "FIFA 2001",
+        "Final Fantasy IX",
+        "Jet Grind Radio",
+        "Links 2001",
+        "Madden NFL 2001",
+        "MechWarrior 4: Vengeance",
+        "Rayman 2: The Great Escape",
+        "RollerCoaster Tycoon: Loopy Landscapes",
+        "Sacrifice",
+        "Shenmue",
+        "Skies of Arcadia",
+        "Spyro: Year of the Dragon",
+        "SSX",
+        "Tekken Tag Tournament",
+        "The Legend of Zelda: Majora's Mask",
+        "The Operative: No One Lives Forever",
+        "Tony Hawk's Pro Skater 2",
+        "Virtua Tennis",
+        "WWF No Mercy"
+      ]
+    },
+    "GDC": {
+      "winner": "The Sims",
+      "nominees": [
+        "Deus Ex",
+        "Jet Set Radio",
+        "No One Lives Forever",
+        "Shenmue"
+      ]
+    }
+  },
+  "2001": {
+    "DICE": {
+      "winner": "Halo: Combat Evolved",
+      "nominees": [
+        "Black & White",
+        "Ico",
+        "Sid Meier's Civilization III"
+      ]
+    },
+    "GDC": {
+      "winner": "Grand Theft Auto III",
+      "nominees": [
+        "Black & White",
+        "Halo: Combat Evolved",
+        "Ico",
+        "Max Payne"
+      ]
+    }
+  },
+  "2002": {
+    "DICE": {
+      "winner": "Battlefield 1942",
+      "nominees": [
+        "Animal Crossing",
+        "Grand Theft Auto: Vice City",
+        "Metroid Prime",
+        "Ratchet & Clank"
+      ]
+    },
+    "GDC": {
+      "winner": "Metroid Prime",
+      "nominees": [
+        "Battlefield 1942",
+        "Grand Theft Auto: Vice City",
+        "Neverwinter Nights",
+        "Tom Clancy's Splinter Cell"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Grand Theft Auto III",
+      "nominees": [
+        "Halo",
+        "Medal of Honor: Allied Assault"
+      ]
+    }
+  },
+  "2003": {
+    "VGA": {
+      "winner": "Madden NFL 2004",
+      "nominees": [
+        "Freedom Fighters",
+        "Grand Theft Auto: Vice City",
+        "Legend of Zelda: The Wind Waker",
+        "SOCOM II U.S. Navy SEALs",
+        "SSX 3",
+        "Star Wars Galaxies",
+        "Star Wars: Knights of the Old Republic",
+        "Tom Clancy's Splinter Cell",
+        "Tony Hawk's Underground"
+      ]
+    },
+    "DICE": {
+      "winner": "Call of Duty",
+      "nominees": [
+        "Command & Conquer: Generals",
+        "Max Payne 2: The Fall of Max Payne",
+        "Prince of Persia: The Sands of Time",
+        "Ratchet & Clank: Going Commando",
+        "Rise of Nations",
+        "SSX 3",
+        "Star Wars: Knights of the Old Republic",
+        "The Legend of Zelda: The Wind Waker"
+      ]
+    },
+    "GDC": {
+      "winner": "Star Wars: Knights of the Old Republic",
+      "nominees": [
+        "Beyond Good & Evil",
+        "Call of Duty",
+        "Prince of Persia: The Sands of Time",
+        "The Legend of Zelda: The Wind Waker"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Call of Duty",
+      "nominees": []
+    },
+    "Golden Joystick": {
+      "winner": "Grand Theft Auto: Vice City",
+      "nominees": [
+        "The Legend of Zelda: The Wind Waker",
+        "Star Wars: Knights of the Old Republic"
+      ]
+    }
+  },
+  "2004": {
+    "VGA": {
+      "winner": "Grand Theft Auto: San Andreas",
+      "nominees": [
+        "Burnout 3: Takedown",
+        "Half-Life 2",
+        "Halo 2",
+        "Metal Gear Solid 3: Snake Eater"
+      ]
+    },
+    "DICE": {
+      "winner": "Half-Life 2",
+      "nominees": [
+        "Grand Theft Auto: San Andreas",
+        "Halo 2",
+        "Katamari Damacy",
+        "World of Warcraft"
+      ]
+    },
+    "GDC": {
+      "winner": "Half-Life 2",
+      "nominees": [
+        "Burnout 3: Takedown",
+        "Grand Theft Auto: San Andreas",
+        "Katamari Damacy",
+        "World of Warcraft"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Half-Life 2",
+      "nominees": [
+        "FIFA Football 2005",
+        "Football Manager 2005",
+        "Grand Theft Auto: San Andreas",
+        "Halo 2",
+        "Pro Evolution Soccer 4"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Doom 3",
+      "nominees": [
+        "Fable",
+        "Pro Evolution Soccer 4"
+      ]
+    }
+  },
+  "2005": {
+    "VGA": {
+      "winner": "Resident Evil 4",
+      "nominees": [
+        "Call of Duty 2",
+        "F.E.A.R.",
+        "God of War",
+        "World of Warcraft"
+      ]
+    },
+    "DICE": {
+      "winner": "God of War",
+      "nominees": [
+        "Call of Duty 2",
+        "Guitar Hero",
+        "Nintendogs",
+        "Shadow of the Colossus"
+      ]
+    },
+    "GDC": {
+      "winner": "Shadow of the Colossus",
+      "nominees": [
+        "Animal Crossing: Wild World",
+        "God of War",
+        "Guitar Hero",
+        "The Movies"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Tom Clancy's Ghost Recon Advanced Warfighter",
+      "nominees": [
+        "Black",
+        "Dr. Kawashima's Brain Training: How Old Is Your Brain?",
+        "Guitar Hero",
+        "Hitman: Blood Money",
+        "Lego Star Wars II: The Original Trilogy"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Grand Theft Auto: San Andreas",
+      "nominees": []
+    }
+  },
+  "2006": {
+    "VGA": {
+      "winner": "The Elder Scrolls IV: Oblivion",
+      "nominees": [
+        "Gears of War",
+        "Guitar Hero 2",
+        "Ōkami",
+        "Tom Clancy's Ghost Recon Advanced Warfighter"
+      ]
+    },
+    "DICE": {
+      "winner": "Gears of War",
+      "nominees": [
+        "Guitar Hero II",
+        "The Elder Scrolls IV: Oblivion",
+        "The Legend of Zelda: Twilight Princess",
+        "Wii Sports"
+      ]
+    },
+    "GDC": {
+      "winner": "Gears of War",
+      "nominees": [
+        "The Elder Scrolls IV: Oblivion",
+        "The Legend of Zelda: Twilight Princess",
+        "Ōkami",
+        "Wii Sports"
+      ]
+    },
+    "BAFTA": {
+      "winner": "BioShock",
+      "nominees": [
+        "Crysis",
+        "Gears of War",
+        "Guitar Hero II",
+        "Kane & Lynch: Dead Men",
+        "Wii Sports"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "The Elder Scrolls IV: Oblivion",
+      "nominees": []
+    }
+  },
+  "2007": {
+    "VGA": {
+      "winner": "BioShock",
+      "nominees": [
+        "Halo 3",
+        "Mass Effect",
+        "The Orange Box"
+      ]
+    },
+    "DICE": {
+      "winner": "Call of Duty 4: Modern Warfare",
+      "nominees": [
+        "BioShock",
+        "Rock Band",
+        "Super Mario Galaxy",
+        "The Orange Box"
+      ]
+    },
+    "GDC": {
+      "winner": "Portal",
+      "nominees": [
+        "BioShock",
+        "Call of Duty 4: Modern Warfare",
+        "Rock Band",
+        "Super Mario Galaxy"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Gears of War",
+      "nominees": []
+    }
+  },
+  "2008": {
+    "VGA": {
+      "winner": "Grand Theft Auto IV",
+      "nominees": [
+        "Fallout 3",
+        "Gears of War 2",
+        "LittleBigPlanet",
+        "Metal Gear Solid 4: Guns of the Patriots"
+      ]
+    },
+    "DICE": {
+      "winner": "LittleBigPlanet",
+      "nominees": [
+        "Fallout 3",
+        "Grand Theft Auto IV",
+        "Left 4 Dead",
+        "Metal Gear Solid 4: Guns of the Patriots"
+      ]
+    },
+    "GDC": {
+      "winner": "Fallout 3",
+      "nominees": [
+        "Fable II",
+        "Grand Theft Auto IV",
+        "LittleBigPlanet",
+        "Left 4 Dead"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Super Mario Galaxy",
+      "nominees": [
+        "Call of Duty 4: Modern Warfare",
+        "Fallout 3",
+        "Fable II",
+        "Grand Theft Auto IV",
+        "Rock Band"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Call of Duty 4: Modern Warfare",
+      "nominees": []
+    }
+  },
+  "2009": {
+    "VGA": {
+      "winner": "Uncharted 2: Among Thieves",
+      "nominees": [
+        "Assassin's Creed II",
+        "Batman: Arkham Asylum",
+        "Call of Duty: Modern Warfare 2",
+        "Left 4 Dead 2"
+      ]
+    },
+    "DICE": {
+      "winner": "Uncharted 2: Among Thieves",
+      "nominees": [
+        "Assassin's Creed II",
+        "Batman: Arkham Asylum",
+        "Call of Duty: Modern Warfare 2",
+        "Dragon Age: Origins"
+      ]
+    },
+    "GDC": {
+      "winner": "Uncharted 2: Among Thieves",
+      "nominees": [
+        "Assassin's Creed II",
+        "Batman: Arkham Asylum",
+        "Demon's Souls",
+        "Dragon Age: Origins"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Batman: Arkham Asylum",
+      "nominees": [
+        "Assassin's Creed II",
+        "Call of Duty: Modern Warfare 2",
+        "FIFA 10",
+        "Left 4 Dead 2",
+        "Uncharted 2: Among Thieves"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Fallout 3",
+      "nominees": []
+    }
+  },
+  "2010": {
+    "VGA": {
+      "winner": "Red Dead Redemption",
+      "nominees": [
+        "Call of Duty: Black Ops",
+        "God of War III",
+        "Halo: Reach",
+        "Mass Effect 2"
+      ]
+    },
+    "DICE": {
+      "winner": "Mass Effect 2",
+      "nominees": [
+        "Angry Birds HD",
+        "Call of Duty: Black Ops",
+        "God of War III",
+        "Red Dead Redemption"
+      ]
+    },
+    "GDC": {
+      "winner": "Red Dead Redemption",
+      "nominees": [
+        "Assassin's Creed: Brotherhood",
+        "Call of Duty: Black Ops",
+        "Limbo",
+        "Mass Effect 2"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Mass Effect 2",
+      "nominees": [
+        "Assassin's Creed: Brotherhood",
+        "FIFA 11",
+        "Heavy Rain",
+        "Limbo",
+        "Super Mario Galaxy 2"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Mass Effect 2",
+      "nominees": []
+    }
+  },
+  "2011": {
+    "VGA": {
+      "winner": "The Elder Scrolls V: Skyrim",
+      "nominees": [
+        "Batman: Arkham City",
+        "The Legend of Zelda: Skyward Sword",
+        "Portal 2",
+        "Uncharted 3: Drake's Deception"
+      ]
+    },
+    "DICE": {
+      "winner": "The Elder Scrolls V: Skyrim",
+      "nominees": [
+        "Batman: Arkham City",
+        "Portal 2",
+        "The Legend of Zelda: Skyward Sword",
+        "Uncharted 3: Drake's Deception"
+      ]
+    },
+    "GDC": {
+      "winner": "The Elder Scrolls V: Skyrim",
+      "nominees": [
+        "Batman: Arkham City",
+        "Dark Souls",
+        "Deus Ex: Human Revolution",
+        "Portal 2"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Portal 2",
+      "nominees": [
+        "Batman: Arkham City",
+        "FIFA 12",
+        "L.A. Noire",
+        "The Elder Scrolls V: Skyrim",
+        "The Legend of Zelda: Skyward Sword"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Portal 2",
+      "nominees": []
+    }
+  },
+  "2012": {
+    "VGA": {
+      "winner": "The Walking Dead",
+      "nominees": [
+        "Assassin's Creed III",
+        "Dishonored",
+        "Journey",
+        "Mass Effect 3"
+      ]
+    },
+    "DICE": {
+      "winner": "Journey",
+      "nominees": [
+        "Borderlands 2",
+        "Far Cry 3",
+        "The Walking Dead",
+        "XCOM: Enemy Unknown"
+      ]
+    },
+    "GDC": {
+      "winner": "Journey",
+      "nominees": [
+        "Dishonored",
+        "Mass Effect 3",
+        "The Walking Dead",
+        "XCOM: Enemy Unknown"
+      ]
+    },
+    "BAFTA": {
+      "winner": "Dishonored",
+      "nominees": [
+        "Far Cry 3",
+        "FIFA 13",
+        "Journey",
+        "Mass Effect 3",
+        "The Walking Dead"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "The Elder Scrolls V: Skyrim",
+      "nominees": []
+    }
+  },
+  "2013": {
+    "VGA": {
+      "winner": "Grand Theft Auto V",
+      "nominees": [
+        "BioShock Infinite",
+        "Super Mario 3D World",
+        "The Last of Us",
+        "Tomb Raider"
+      ]
+    },
+    "DICE": {
+      "winner": "The Last of Us",
+      "nominees": [
+        "Assassin's Creed IV: Black Flag",
+        "BioShock Infinite",
+        "Grand Theft Auto V",
+        "The Legend of Zelda: A Link Between Worlds"
+      ]
+    },
+    "GDC": {
+      "winner": "The Last of Us",
+      "nominees": [
+        "Gone Home",
+        "Grand Theft Auto V",
+        "Super Mario 3D World",
+        "Tomb Raider"
+      ]
+    },
+    "BAFTA": {
+      "winner": "The Last of Us",
+      "nominees": [
+        "Assassin's Creed IV: Black Flag",
+        "Grand Theft Auto V",
+        "Papers, Please",
+        "Super Mario 3D World",
+        "Tearaway"
+      ]
+    },
+    "Golden Joystick": {
+      "winner": "Grand Theft Auto V",
+      "nominees": []
+    }
+  },
+  "_notas": [
+    "Método: datos extraídos de la wikitext cruda (action=raw) de Wikipedia en inglés el 2026-10-21. Los títulos son el texto visible del enlace en Wikipedia (sin plataformas, desarrolladoras ni notas); 'nominees' excluye siempre al ganador.",
+    "VGA: no hay ediciones de 1998 a 2002 (los Spike Video Game Awards empezaron en 2003). Las páginas individuales '2003 Spike Video Game Awards' … '2013 Spike Video Game Awards' no existen en Wikipedia (404 o redirección), así que se usó la página general 'Spike Video Game Awards'. 2013 corresponde a la edición VGX.",
+    "VGA 2003: incluye 9 nominados tal como los lista Wikipedia (algunos son juegos de 2002, p.ej. Grand Theft Auto: Vice City y Tom Clancy's Splinter Cell). El título 'Legend of Zelda: The Wind Waker' aparece así (sin 'The') en la página.",
+    "VGA 2006: el título 'Guitar Hero 2' aparece así en la página (el nombre oficial es Guitar Hero II).",
+    "VGA 2007: Wikipedia solo lista 3 nominados además del ganador (Halo 3, Mass Effect, The Orange Box).",
+    "DICE: año = año de los juegos (ceremonia del año siguiente). Se mapeó por número de edición: 2nd Annual Interactive Achievement Awards (1999) = 1998, …, 17th Annual D.I.C.E. Awards (2014) = 2013. La 1st edición (1998, juegos de 1997, ganador GoldenEye 007) queda fuera del rango. En 1998 el premio se presentaba aún como Game of the Year (en la 1st se llamaba 'Interactive Title of the Year'); de 2005 a 2008 se llamó 'Overall Game of the Year'.",
+    "DICE 2000 (4th Annual Interactive Achievement Awards): dudoso. Wikipedia indica que los finalistas a Game of the Year incluían a todos los nominados a Console Game of the Year y Computer Game of the Year, por lo que la lista tiene 28 nominados además del ganador (Diablo II). Se recogen tal cual.",
+    "GDC: la primera edición (2001) premia juegos de 2000, así que 1998 y 1999 no tienen GDC. Entre 2005 y 2007 el premio se tituló 'Best Game'.",
+    "BAFTA: no hay datos para 1998–2002 (la primera ceremonia de videojuegos con categoría de mejor juego fue en 2004). Año = año de ceremonia − 1: 1st (2004) = 2003, 2nd (2005) = 2004, 3rd (oct. 2006) = 2005, 4th (oct. 2007) = 2006, 5th (mar. 2009) = 2008, 6th (2010) = 2009, …, 10th (2014) = 2013.",
+    "BAFTA dudoso: las ediciones 3rd y 4th se celebraron en octubre y cubren periodos a caballo entre dos años (Wikipedia las rotula 2005/06 y 2006/07; p.ej. el ganador de la 4th, BioShock, es de 2007). La 5th (rotulada 2007/08) incluye juegos de 2007 como Super Mario Galaxy y Call of Duty 4. No hubo ceremonia en 2008, así que BAFTA 2007 queda vacío.",
+    "BAFTA 2003: en Wikipedia solo figura el ganador (Call of Duty, categoría 'Game on Any Platform – The Year's Best Game'), sin nominados; nominees = [].",
+    "Golden Joystick: la página no tiene ediciones entre 1996/1997 y 2002, por lo que 1998–2001 quedan sin datos. Año = año de la ceremonia (otoño), aunque los juegos premiados suelen ser del año anterior (p.ej. 2008 = Call of Duty 4, 2012 = Skyrim).",
+    "Golden Joystick: categoría usada por edición: 2002 'Game of the Year'; 2003–2012 'Ultimate Game of the Year'; 2013 'Game of the Year'. En 2004 existía además 'Game of the Year (Editors' Award)' (ganador Pro Evolution Soccer 4); se usó 'Ultimate Game of the Year' (Doom 3).",
+    "Golden Joystick: solo 2002–2004 listan finalistas ('Runners-up'); de 2005 a 2013 Wikipedia solo da el ganador (nominees = []). En 2002 el finalista aparece como 'Halo' (Halo: Combat Evolved) y en 2004 'Fable'.",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=Spike_Video_Game_Awards&action=raw",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=D.I.C.E._Award_for_Game_of_the_Year&action=raw",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=Game_Developers_Choice_Award_for_Game_of_the_Year&action=raw",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=British_Academy_Games_Award_for_Best_Game&action=raw",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=1st_British_Academy_Games_Awards&action=raw",
+    "Fuente: https://en.wikipedia.org/w/index.php?title=Golden_Joystick_Awards&action=raw"
+  ]
+}
