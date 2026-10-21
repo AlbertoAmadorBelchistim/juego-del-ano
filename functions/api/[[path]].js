@@ -139,10 +139,13 @@ async function pushListas(env, request, binding, force = false) {
   const prev = await kvGet(env, key);
   if (!force && prev && prev.version === data.version) return prev;
   const res = { version: data.version, fecha: new Date().toISOString(), listas: {}, sin_pareja: [] };
-  for (const l of data.listas) {
-    const r = await hogarCall(env, binding, "/ingesta/juegos-listas", "POST", { lista: l.lista, reemplazar: true, juegos: l.juegos.map(strip) });
-    res.listas[l.lista] = r.actualizados ?? r.etiquetados ?? null;
-    for (const t of r.sin_pareja || []) if (!res.sin_pareja.includes(t)) res.sin_pareja.push(t);
+  // Decisión de Alberto (21-10-2026): las listas comunes (premios, rankings) no van a Hogar. Se vacían una vez y ya no se mandan.
+  if (!(await kvGet(env, "hogar_listas_retiradas_" + binding))) {
+    for (const l of data.listas) {
+      const r = await hogarCall(env, binding, "/ingesta/juegos-listas", "POST", { lista: l.lista, reemplazar: true, juegos: [] });
+      res.listas[l.lista] = "vaciada (" + (r.actualizados ?? 0) + ")";
+    }
+    await kvSet(env, "hogar_listas_retiradas_" + binding, { fecha: new Date().toISOString(), listas: data.listas.map(l => l.lista) });
   }
   const n = await hogarCall(env, binding, "/ingesta/juegos-notas", "POST", { juegos: data.notas.map(strip) });
   res.notas = n.actualizados ?? null;
