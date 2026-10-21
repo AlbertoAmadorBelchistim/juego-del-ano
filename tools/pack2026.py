@@ -8,6 +8,13 @@ for f in sorted(os.listdir(D)):
     if f == '_meta.json' or not f.endswith('.json'): continue
     d = json.load(open(f'{D}/{f}')); d['id'] = '2026-' + f[:-5]
     games.append({k: v for k, v in d.items() if v not in (None, []) or k in ('aw', 'via')})
+# Un juego que ya fue candidato no desaparece aunque baje del corte: puede tener marcas de los usuarios.
+if os.path.exists(OUT):
+    have = {g['id'] for g in games}
+    for g in json.load(open(OUT)).get('games', []):
+        if g['id'] not in have:
+            games.append(g)
+            print('se mantiene (ya fue candidato):', g.get('t'))
 json.dump({"meta": meta, "games": games}, open(OUT, 'w'), ensure_ascii=False, separators=(',', ':'))
 print(len(games), 'juegos ->', os.path.normpath(OUT))
 
