@@ -397,6 +397,7 @@ const CATDEF = {q:"", sort:"ix", dec:"", gen:"", pl:"", min:0, f:"all", n:100};
 if(!S.cat || typeof S.cat!=="object") S.cat = {...CATDEF};
 // Un juego de casa marcado cuando estaba fuera del catálogo (id «casa-<n>») que ahora ya tiene ficha:
 // la marca pasa a la ficha, para que no quede huérfana cuando el catálogo crece.
+const hidsOf = id => MYHOG && MYHOG[id] ? [...new Set(MYHOG[id].map(e=>e.hid))] : null;
 async function healCasa(){
   if (!ME || !MYHOG) return;
   for (const id of Object.keys(ST).filter(k=>k.startsWith("casa-"))){
@@ -404,7 +405,8 @@ async function healCasa(){
     const to = Object.keys(MYHOG).find(k=>!k.startsWith("casa-") && MYHOG[k].some(e=>e.hid===hid));
     if (!to || ST[to]) continue;
     const m = ST[id], body = s => JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo, progreso:s.progreso||null});
-    try { await api("marks/"+encodeURIComponent(to), {method:"PUT", body:body(m)});
+    const gg = byId(to);
+    try { await api("marks/"+encodeURIComponent(to), {method:"PUT", body:JSON.stringify({...JSON.parse(body(m)), t:gg&&gg.t, s:gg&&gg.bls, h:hidsOf(to)})});
           await api("marks/"+encodeURIComponent(id), {method:"PUT", body:body({})});
           ST[to] = m; delete ST[id]; } catch(e){ console.warn("No se pudo mover", id, e.message); }
   }
@@ -561,7 +563,8 @@ async function toggleOwn(id, kind){
   if (MYHOG && s.estado==="tengo") s.estado = null;
   const empty = !s.estado && !s.terminado && !s.completo && !s.progreso;
   if (empty) delete ST[id]; else ST[id]=s; render();
-  try { await api("marks/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo, progreso:s.progreso||null})}); }
+  const gg = byId(id);
+  try { await api("marks/"+encodeURIComponent(id), {method:"PUT", body:JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo, progreso:s.progreso||null, t:gg&&gg.t, s:gg&&gg.bls, h:hidsOf(id)})}); }
   catch(err){ if(Object.keys(prev).length) ST[id]=prev; else delete ST[id]; render(); toast("No se pudo guardar"); }
 }
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, 3000); }

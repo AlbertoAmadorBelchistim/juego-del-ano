@@ -87,11 +87,15 @@ async function hogarData(env, request) {          // listas, notas y títulos (p
   const r = await env.ASSETS.fetch(new Request(new URL("/data/hogar.json", request.url)));
   return r.json();
 }
-function titles(data) {                             // id -> {titulo, slug}
+function titles(data, extra) {                      // id -> {titulo, slug}; extra = tabla «titulos» (juegos del catálogo fuera de los candidatos)
   const m = {};
+  const hids = {};
+  for (const r of extra || []) { m[r.game_id] = { titulo: r.titulo, slug: r.slug || undefined }; if (r.hids) hids[r.game_id] = JSON.parse(r.hids); }
   for (const x of [...data.notas, ...data.listas.flatMap(l => l.juegos)]) m[x.id] = { titulo: x.titulo, slug: x.slug };
+  for (const [id, h] of Object.entries(hids)) if (m[id] && Array.isArray(h) && h.length) m[id].hids = h;   // objetos de Hogar que ve la web para ese juego
   return m;
 }
+const extraTitles = async env => (await env.DB.prepare("SELECT game_id, titulo, slug, hids FROM titulos").all()).results;
 const strip = ({ id, ...rest }) => rest;
 
 // Emparejamiento web -> objetos de Hogar: alias manual, slug o título normalizado (misma regla que Hogar).
@@ -110,7 +114,8 @@ function toHogar(id, T, H) {
   const m = /^casa-(\d+)$/.exec(id);
   if (m) { const it = H.byId[m[1]]; return it ? [{ titulo: it.titulo, ...(it.slug ? { slug: it.slug } : {}), plataforma: it.plataforma }] : []; }
   const t = T[id]; if (!t) return [];
-  const items = [...new Map(H.find(id, t).map(it => [it.id, it])).values()];
+  const fromWeb = (t.hids || []).map(h => H.byId[h]).filter(Boolean);       // lo que empareja la web tiene prioridad
+  const items = [...new Map((fromWeb.length ? fromWeb : H.find(id, t)).map(it => [it.id, it])).values()];
   return items.length ? items.map(it => ({ titulo: it.titulo, ...(t.slug ? { slug: t.slug } : {}), plataforma: it.plataforma })) : [{ titulo: t.titulo, ...(t.slug ? { slug: t.slug } : {}) }];
 }
 
@@ -118,7 +123,7 @@ function toHogar(id, T, H) {
 // Nunca se manda un progreso vacío: en Hogar borraría todo lo de esa persona.
 async function pushPersona(env, request, user, fresh = false) {
   if (!hogarOn(env, user.binding) || !user.persona) return;
-  const data = await hogarData(env, request), T = titles(data), marks = await marksOf(env, user.id);
+  const data = await hogarData(env, request), T = titles(data, await extraTitles(env)), marks = await marksOf(env, user.id);
   const H = await hogarIndex(env, request, user.binding, fresh);
   const done = Object.entries(marks).filter(([, m]) => m.terminado || m.completo)
     .flatMap(([id, m]) => toHogar(id, T, H).map(x => ({ ...x, terminado: !!m.terminado, completo: !!m.completo })));
@@ -144,7 +149,7 @@ async function pushChange(env, request, user, id, prev, next) {
   if ((pT && !next.terminado) || (pC && !next.completo)) return pushPersona(env, request, user);
   const progresoCambia = pT !== next.terminado || pC !== next.completo;
   if (!progresoCambia && !quieroCambia) return;
-  const data = await hogarData(env, request), T = titles(data), H = await hogarIndex(env, request, user.binding);
+  const data = await hogarData(env, request), T = titles(data, await extraTitles(env)), H = await hogarIndex(env, request, user.binding);
   const res = { fecha: new Date().toISOString(), parcial: id };
   if (progresoCambia) {
     const juegos = toHogar(id, T, H).map(x => ({ ...x, terminado: next.terminado, completo: next.completo }));
@@ -258,6 +263,13 @@ export async function onRequest({ request, env, params, waitUntil }) {
       if (me.hogarId && estado === "tengo") estado = null;   // con hogar, «tengo» lo decide Hogar
       const completo = !!b.completo, terminado = !!b.terminado || completo;
       const progreso = !terminado && (b.progreso === "jugando" || b.progreso === "abandonado") ? b.progreso : null;
+      if (typeof b.t === "string" && b.t.trim() && !arg.startsWith("casa-")) {  // título, slug y objetos de Hogar que ve la web, para mandarlo a Hogar igual
+        const h = Array.isArray(b.h) ? JSON.stringify(b.h.filter(Number.isInteger).slice(0, 10)) : null;
+        await env.DB.prepare(`INSERT INTO titulos (game_id, titulo, slug, hids) VALUES (?, ?, ?, ?)
+          ON CONFLICT (game_id) DO UPDATE SET titulo = excluded.titulo, slug = excluded.slug, hids = COALESCE(excluded.hids, titulos.hids)
+          WHERE titulos.titulo IS NOT excluded.titulo OR titulos.hids IS NOT COALESCE(excluded.hids, titulos.hids)`)
+          .bind(arg, b.t.trim().slice(0, 200), typeof b.s === "string" ? b.s.slice(0, 120) : null, h).run();
+      }
       const prev = me.hogarId ? await env.DB.prepare("SELECT estado, terminado, completo FROM marks WHERE user_id = ? AND game_id = ?").bind(me.id, arg).first() : null;
       if (!estado && !terminado && !progreso) {
         await env.DB.prepare("DELETE FROM marks WHERE user_id = ? AND game_id = ?").bind(me.id, arg).run();

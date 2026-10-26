@@ -29,3 +29,6 @@ CREATE TABLE IF NOT EXISTS hogares (id INTEGER PRIMARY KEY, nombre TEXT NOT NULL
 ALTER TABLE users ADD COLUMN hogar_id INTEGER REFERENCES hogares(id);
 ALTER TABLE users ADD COLUMN persona TEXT;        -- nombre que usa Hogar para listas («Quiero Alberto»)
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT, updated TEXT NOT NULL DEFAULT (datetime('now')));
+
+-- Títulos de juegos del catálogo que no son candidatos anuales (no están en hogar.json); los rellena la web al marcar
+CREATE TABLE IF NOT EXISTS titulos (game_id TEXT PRIMARY KEY, titulo TEXT NOT NULL, slug TEXT, hids TEXT);  -- hids: ids de objetos de Hogar según la web (JSON)
