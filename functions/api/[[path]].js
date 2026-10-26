@@ -98,8 +98,8 @@ const strip = ({ id, ...rest }) => rest;
 const ROMAN = { ii: "2", iii: "3", iv: "4", v: "5", vi: "6", vii: "7", viii: "8", ix: "9", x: "10", xi: "11", xii: "12", xiii: "13", xiv: "14", xv: "15", xvi: "16" };
 const normH = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/director'?s cut/g, " ").replace(/[^a-z0-9]+/g, " ")
   .split(" ").filter(w => w && !["the", "edition", "complete", "definitive", "deluxe", "remastered", "hd", "goty", "ultimate", "collection"].includes(w)).map(w => ROMAN[w] || w).join(" ");
-async function hogarIndex(env, request, binding) {
-  const inv = await hogarCall(env, binding, "/ingesta/juegos");
+async function hogarIndex(env, request, binding, fresh = false) {
+  const inv = await hogarInv(env, binding, fresh);
   const alias = await (await env.ASSETS.fetch(new Request(new URL("/data/hogar_alias.json", request.url)))).json().catch(() => ({}));
   const byId = {}, bySlug = {}, byNorm = {};
   for (const it of inv) { byId[it.id] = it; if (it.slug) (bySlug[it.slug] = bySlug[it.slug] || []).push(it); const n = normH(it.titulo); (byNorm[n] = byNorm[n] || []).push(it); }
@@ -116,10 +116,10 @@ function toHogar(id, T, H) {
 
 // Progreso y «Quiero» de una persona: se manda entero (reemplazar) cada vez que cambia.
 // Nunca se manda un progreso vacío: en Hogar borraría todo lo de esa persona.
-async function pushPersona(env, request, user) {
+async function pushPersona(env, request, user, fresh = false) {
   if (!hogarOn(env, user.binding) || !user.persona) return;
   const data = await hogarData(env, request), T = titles(data), marks = await marksOf(env, user.id);
-  const H = await hogarIndex(env, request, user.binding);
+  const H = await hogarIndex(env, request, user.binding, fresh);
   const done = Object.entries(marks).filter(([, m]) => m.terminado || m.completo)
     .flatMap(([id, m]) => toHogar(id, T, H).map(x => ({ ...x, terminado: !!m.terminado, completo: !!m.completo })));
   const res = { fecha: new Date().toISOString(), enviados: done.length };
@@ -130,6 +130,34 @@ async function pushPersona(env, request, user) {
     juegos: Object.entries(marks).filter(([, m]) => m.estado === "quiero").flatMap(([id]) => toHogar(id, T, H).map(x => ({ ...x, posicion: true }))),
   });
   await kvSet(env, "hogar_persona_" + user.id, res);
+}
+
+// Un solo cambio de marca: a Hogar solo va lo que cambió.
+//  - marcar Terminado/100 %: se manda ese juego (reemplazar: false), en vez de las ~70 fichas de la persona;
+//  - quitar Terminado/100 %: envío completo (con reemplazar: true es como Hogar borra un progreso);
+//  - cambiar «Quiero»: se reenvía la lista «Quiero <persona>» (es corta);
+//  - Jugando/Abandonado no se mandan a Hogar, así que no generan llamadas.
+async function pushChange(env, request, user, id, prev, next) {
+  if (!hogarOn(env, user.binding) || !user.persona) return;
+  const pT = !!(prev && prev.terminado), pC = !!(prev && prev.completo);
+  const quieroCambia = ((prev && prev.estado) === "quiero") !== (next.estado === "quiero");
+  if ((pT && !next.terminado) || (pC && !next.completo)) return pushPersona(env, request, user);
+  const progresoCambia = pT !== next.terminado || pC !== next.completo;
+  if (!progresoCambia && !quieroCambia) return;
+  const data = await hogarData(env, request), T = titles(data), H = await hogarIndex(env, request, user.binding);
+  const res = { fecha: new Date().toISOString(), parcial: id };
+  if (progresoCambia) {
+    const juegos = toHogar(id, T, H).map(x => ({ ...x, terminado: next.terminado, completo: next.completo }));
+    if (juegos.length) res.progreso = await hogarCall(env, user.binding, "/ingesta/juegos-progreso", "POST", { usuario: user.email, reemplazar: false, juegos });
+  }
+  if (quieroCambia) {
+    const marks = await marksOf(env, user.id);
+    res.quiero = await hogarCall(env, user.binding, "/ingesta/juegos-listas", "POST", {
+      lista: "Quiero " + user.persona, reemplazar: true,
+      juegos: Object.entries(marks).filter(([, m]) => m.estado === "quiero").flatMap(([g]) => toHogar(g, T, H).map(x => ({ ...x, posicion: true }))),
+    });
+  }
+  await kvSet(env, "hogar_ultimo_cambio_" + user.id, res);
 }
 
 // Listas comunes y notas: se mandan cuando cambia la versión de hogar.json (tras cada actualización semanal).
@@ -153,9 +181,20 @@ async function pushListas(env, request, binding, force = false) {
   return res;
 }
 
+// Inventario de Hogar con caché de 10 minutos: cada visita no relee los ~360 juegos de la base de Hogar.
+// Primero memoria del isolate (gratis), luego una fila de kv (1 lectura), y solo si caducó se pide a Hogar.
+const INV_TTL = 10 * 60 * 1000, INV_MEM = {};
+async function hogarInv(env, binding, fresh = false) {
+  const now = Date.now(), key = "hogar_inv_" + binding;
+  if (!fresh && INV_MEM[binding] && now - INV_MEM[binding].t < INV_TTL) return INV_MEM[binding].inv;
+  if (!fresh) { const c = await kvGet(env, key); if (c && now - c.t < INV_TTL) { INV_MEM[binding] = c; return c.inv; } }
+  const inv = await hogarCall(env, binding, "/ingesta/juegos");
+  const c = { t: now, inv }; INV_MEM[binding] = c; await kvSet(env, key, c);
+  return inv;
+}
 async function hogarJuegos(env, binding) {
   if (!hogarOn(env, binding)) return null;
-  try { return await hogarCall(env, binding, "/ingesta/juegos"); } catch (e) { return { error: String(e.message || e) }; }
+  try { return await hogarInv(env, binding); } catch (e) { return { error: String(e.message || e) }; }
 }
 
 /* ---------- IGDB (API oficial; claves IGDB_CLIENT_ID / IGDB_CLIENT_SECRET como secretos de Pages) ---------- */
@@ -219,6 +258,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
       if (me.hogarId && estado === "tengo") estado = null;   // con hogar, «tengo» lo decide Hogar
       const completo = !!b.completo, terminado = !!b.terminado || completo;
       const progreso = !terminado && (b.progreso === "jugando" || b.progreso === "abandonado") ? b.progreso : null;
+      const prev = me.hogarId ? await env.DB.prepare("SELECT estado, terminado, completo FROM marks WHERE user_id = ? AND game_id = ?").bind(me.id, arg).first() : null;
       if (!estado && !terminado && !progreso) {
         await env.DB.prepare("DELETE FROM marks WHERE user_id = ? AND game_id = ?").bind(me.id, arg).run();
       } else {
@@ -227,7 +267,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
            ON CONFLICT (user_id, game_id) DO UPDATE SET estado = excluded.estado, terminado = excluded.terminado, completo = excluded.completo, progreso = excluded.progreso, updated = excluded.updated`
         ).bind(me.id, arg, estado, terminado ? 1 : 0, completo ? 1 : 0, progreso).run();
       }
-      if (hogarOn(env, me.binding)) bg(pushPersona(env, request, me));
+      if (hogarOn(env, me.binding)) bg(pushChange(env, request, me, arg, prev, { estado, terminado, completo }));
       return json({ ok: true });
     }
 
@@ -238,7 +278,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
       const inv = await step("GET /ingesta/juegos", () => hogarCall(env, me.binding, "/ingesta/juegos"));
       if (Array.isArray(inv)) log[log.length - 1].resultado = { juegos: inv.length };
       const members = (await env.DB.prepare("SELECT u.id, u.email, u.persona, h.binding FROM users u JOIN hogares h ON h.id = u.hogar_id WHERE u.hogar_id = ?").bind(me.hogarId).all()).results;
-      for (const m of members) await step("progreso y Quiero " + m.persona, async () => { await pushPersona(env, request, m); return await kvGet(env, "hogar_persona_" + m.id); });
+      for (const m of members) await step("progreso y Quiero " + m.persona, async () => { await pushPersona(env, request, m, true); return await kvGet(env, "hogar_persona_" + m.id); });
       await step("listas y notas", () => pushListas(env, request, me.binding, true));
       return json({ log });
     }

@@ -573,7 +573,9 @@ document.addEventListener("change", async e=>{
     catch(err){ toast("No se pudo guardar"); }
   }
 });
-document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && ME) loadState().catch(()=>{}); });
+// Al volver a la pestaña solo se recarga si han pasado más de 5 minutos (en el móvil esto pasa constantemente).
+let LAST_LOAD = Date.now();
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && ME && Date.now()-LAST_LOAD > 5*60*1000){ LAST_LOAD=Date.now(); loadState().catch(()=>{}); } });
 $("boot").hidden = true;
 render();
 try { await loadState(); $("apiErr").hidden=true; } catch(e){ console.warn("Sin sesión:", e.message);
