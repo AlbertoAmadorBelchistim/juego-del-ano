@@ -73,10 +73,21 @@ function matchHogar(items){
   if(!Array.isArray(items)) return null;
   const bySlug={}, byNorm={};
   const pool = [...allGames(), ...((CAT&&CAT.games)||[])];
-  for(const g of pool){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||[]).push(g.id); }
+  for(const g of pool){ if(g.bls) (bySlug[g.bls]=bySlug[g.bls]||[]).push(g.id); const n=normH(g.t); (byNorm[n]=byNorm[n]||new Map()).set(g.id,g); }
+  // Varias fichas con el mismo título (original, remake, remaster): la copia de casa es una sola.
+  // Se queda la de la misma plataforma que el objeto de Hogar y, entre ellas, la más votada en Backloggd.
+  const pickOne = (m, plat) => { if(!m) return []; const gs=[...m.values()]; if(gs.length===1) return [gs[0].id];
+    const P=String(plat||"").trim(), onP=gs.filter(g=>(g.pl||[]).includes(P) || (P==="Switch" && (g.pl||[]).includes("Switch 2")));
+    const c=(onP.length?onP:gs).sort((a,b)=>(b.bln||0)-(a.bln||0) || (b.mcn||0)-(a.mcn||0) || (b.y||0)-(a.y||0));
+    return [c[0].id]; };
   const H={}, aliasOf={};
   for(const [gid, hs] of Object.entries(HALIAS)) if(Array.isArray(hs)) hs.forEach(h=>(aliasOf[h]=aliasOf[h]||[]).push(gid));
-  for(const it of items){ const ids = aliasOf[it.id] || (it.slug && bySlug[it.slug]) || byNorm[normH(it.titulo)] || [];
+  const gt = {}; for(const g of pool) gt[g.id]=g;
+  const onPlat = (g, P) => !P || !(g.pl||[]).length || (g.pl||[]).includes(P) || (P==="Switch" && (g.pl||[]).includes("Switch 2"));
+  for(const it of items){ const nt=normH(it.titulo), byT=pickOne(byNorm[nt], it.plataforma);
+    let bySl = it.slug && bySlug[it.slug] ? [...new Set(bySlug[it.slug])] : null;
+    if (bySl && byT.length && !bySl.some(id=>normH(gt[id].t)===nt && onPlat(gt[id], it.plataforma))) bySl = null;   // slug de Hogar que apunta a otro juego (p. ej. «Mario Kart 8» para el Deluxe)
+    const ids = aliasOf[it.id] || bySl || byT;
     for(const id of ids) (H[id]=H[id]||[]).push({formato: it.formato||"Física", plataforma: it.plataforma||"", hid: it.id});
     if(!ids.length) H["casa-"+it.id] = [{formato: it.formato||"Física", plataforma: it.plataforma||"", hid: it.id, titulo: it.titulo, fuera: true}]; }
   return H;
@@ -261,7 +272,7 @@ function hogarCard(){
   const n = Array.isArray(HOGINFO.juegos) ? HOGINFO.juegos.length : 0, m = Object.keys(MYHOG||{}).filter(k=>!k.startsWith("casa-")).length, sy = HOGINFO.sync;
   const sp = sy && sy.sin_pareja && sy.sin_pareja.length ? `<details><summary>${sy.sin_pareja.length} títulos de mis listas sin pareja en Hogar</summary><p class="muted" style="font-size:13px">${sy.sin_pareja.map(esc).join(" · ")}</p></details>` : "";
   return `<div class="card"><h3>Hogar · ${esc(HOGINFO.nombre)}</h3>
-    <p>${n} juegos en casa según Hogar; ${m} juegos de este catálogo salen como «En casa». Terminado, 100 % y Quiero se mandan a Hogar al momento.${sy?` Listas de premios y rankings enviadas el ${new Date(sy.fecha).toLocaleDateString("es-ES")}.`:""}</p>${sp}</div>`;
+    <p>${n} juegos en casa según Hogar; ${m} juegos de este catálogo salen como «En casa». Terminado, 100 %, Jugando, Abandonado y Quiero se mandan a Hogar al momento.${sy?` Notas sincronizadas el ${new Date(sy.fecha).toLocaleDateString("es-ES")}.`:""}</p>${sp}</div>`;
 }
 function renderCol(){
   const out=$("colOut");
