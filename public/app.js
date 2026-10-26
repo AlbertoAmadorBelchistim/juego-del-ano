@@ -395,10 +395,24 @@ function renderCmp(){
 let CAT = null, CAT_LOADING = false;
 const CATDEF = {q:"", sort:"ix", dec:"", gen:"", pl:"", min:0, f:"all", n:100};
 if(!S.cat || typeof S.cat!=="object") S.cat = {...CATDEF};
+// Un juego de casa marcado cuando estaba fuera del catálogo (id «casa-<n>») que ahora ya tiene ficha:
+// la marca pasa a la ficha, para que no quede huérfana cuando el catálogo crece.
+async function healCasa(){
+  if (!ME || !MYHOG) return;
+  for (const id of Object.keys(ST).filter(k=>k.startsWith("casa-"))){
+    const hid = +id.slice(5); if (MYHOG[id]) continue;
+    const to = Object.keys(MYHOG).find(k=>!k.startsWith("casa-") && MYHOG[k].some(e=>e.hid===hid));
+    if (!to || ST[to]) continue;
+    const m = ST[id], body = s => JSON.stringify({estado:s.estado||null, terminado:!!s.terminado, completo:!!s.completo, progreso:s.progreso||null});
+    try { await api("marks/"+encodeURIComponent(to), {method:"PUT", body:body(m)});
+          await api("marks/"+encodeURIComponent(id), {method:"PUT", body:body({})});
+          ST[to] = m; delete ST[id]; } catch(e){ console.warn("No se pudo mover", id, e.message); }
+  }
+}
 async function loadCat(){
   if (CAT || CAT_LOADING) return; CAT_LOADING = true;
   try { CAT = await getJSON("data/catalogo.json");
-    if (HOGINFO && Array.isArray(HOGINFO.juegos)) MYHOG = matchHogar(HOGINFO.juegos);
+    if (HOGINFO && Array.isArray(HOGINFO.juegos)) { MYHOG = matchHogar(HOGINFO.juegos); await healCasa(); }
     if (ME && VIEW!=null && VIEW!==ME.id) await loadView(VIEW, false); }
   catch(e){ CAT = {games:[], error:String(e.message||e)}; }
   CAT_LOADING = false; render();
