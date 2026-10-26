@@ -233,13 +233,18 @@ function viewSel(){
   </div>`;
 }
 function compareBlock(m, t, name){
-  const G = allGames().map(g=>({...g, ix:index(g)}));
+  const G0 = allGames().map(g=>({...g, ix:index(g)})), seen = new Set(G0.map(g=>g.id));
+  const G = [...G0, ...((CAT&&CAT.games)||[]).filter(g=>!seen.has(g.id)).map(g=>({...g, ix:g.ix??0}))];
+  const casaT = {}; for (const H of [MYHOG, VHOG]) for (const [id,a] of Object.entries(H||{})) if (id.startsWith("casa-")) casaT[id]=(a[0]&&a[0].titulo)||"Juego de casa";
+  for (const id of new Set([...Object.keys(ST), ...Object.keys(VST)])) if (id.startsWith("casa-") && !casaT[id]) casaT[id]="Juego de casa";
+  for (const [id,t] of Object.entries(casaT)) G.push({id, t, y:null, ix:0, casa:true});
   const L = f => G.filter(g=>f(g.id)).sort((a,b)=>b.ix-a.ix);
   const both = L(id=>m(id).terminado && t(id).terminado);
   const onlyMe = L(id=>m(id).terminado && !t(id).terminado);
   const onlyThem = L(id=>t(id).terminado && !m(id).terminado);
   const swap = L(id=>t(id).terminado && m(id).estado==="tengo" && !m(id).terminado);
-  const li = arr => arr.length ? `<ul class="mini">${arr.slice(0,40).map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}${arr.length>40?`<li class="muted">y ${arr.length-40} más</li>`:""}</ul>` : `<p class="empty">Ninguno.</p>`;
+  const li = arr => arr.length ? `<ul class="mini">${arr.slice(0,40).map(g=>{ const lab=`${esc(g.t)}${g.y?` <span class="muted">(${g.y})</span>`:` <span class="muted">(fuera del catálogo)</span>`}`;
+      return `<li>${seen.has(g.id)?`<button data-goto="${g.id}">${lab}</button>`:`<span>${lab}</span>`}<span class="idx" style="font-size:18px">${g.ix?g.ix.toFixed(1).replace(".",","):"—"}</span></li>`; }).join("")}${arr.length>40?`<li class="muted">y ${arr.length-40} más</li>`:""}</ul>` : `<p class="empty">Ninguno.</p>`;
   return `<div class="card"><h3>Tú frente a ${esc(name)}</h3>
     <div class="kpis" style="margin:8px 0 14px">
       <div class="kpi"><b style="color:var(--crit)">${both.length}</b><span>Terminados por los dos</span></div>
@@ -280,10 +285,15 @@ function renderCol(){
   const own = VIEW===ME.id; const ST_ = own ? ST : VST; const H_ = own ? MYHOG : VHOG; const st = id => effOf(ST_, H_, id);
   const who = own ? null : (USERS.find(u=>u.id===VIEW)||{name:"?"}).name;
   $("colTitle").textContent = own ? "Mi colección" : "Colección de " + who;
-  const G = allGames().map(g=>({...g, ix:index(g)}));
-  const ids = [...new Set([...Object.keys(ST_), ...Object.keys(H_||{})])].filter(id=>byId(id));
-  const jugando = G.filter(g=>st(g.id).progreso==="jugando").sort((a,b)=>b.ix-a.ix);
-  const pick = f => G.filter(g=>f(st(g.id)));
+  const G = allGames().map(g=>({...g, ix:index(g)}));               // candidatos anuales (gráfico por año)
+  // Para los totales cuenta todo lo marcado o en casa: candidatos + resto del catálogo + juegos de casa fuera del catálogo
+  const seen = new Set(G.map(g=>g.id));
+  const GA = [...G, ...((CAT&&CAT.games)||[]).filter(g=>!seen.has(g.id)).map(g=>({...g, ix:g.ix??0, cat:true}))];
+  for (const [id,arr] of Object.entries(H_||{})) if (id.startsWith("casa-")) GA.push({id, t:(arr[0]&&arr[0].titulo)||"Juego de casa", y:null, ix:0, pl:[...new Set(arr.map(x=>x.plataforma).filter(Boolean))], casa:true});
+  for (const id of Object.keys(ST_)) if (id.startsWith("casa-") && !GA.some(g=>g.id===id)) GA.push({id, t:"Juego de casa", y:null, ix:0, pl:[], casa:true});
+  const ids = [...new Set([...Object.keys(ST_), ...Object.keys(H_||{})])].filter(id=>byId(id) || id.startsWith("casa-"));
+  const jugando = GA.filter(g=>st(g.id).progreso==="jugando").sort((a,b)=>b.ix-a.ix);
+  const pick = f => GA.filter(g=>f(st(g.id)));
   const tengo=pick(s=>s.estado==="tengo"), quiero=pick(s=>s.estado==="quiero"), term=pick(s=>s.terminado), comp=pick(s=>s.completo);
   const pend = tengo.filter(g=>!st(g.id).terminado).sort((a,b)=>b.ix-a.ix);
   if(!ids.length){ out.innerHTML= viewSel() + (own ? `<p class="empty">Todavía no hay nada marcado. En el ranking, cada juego tiene botones Tengo, Quiero, Terminado y 100%.</p>` : `<p class="empty">${esc(who)} todavía no ha marcado nada.</p>`); return; }
@@ -316,7 +326,8 @@ function renderCol(){
   const ptab = Object.keys(pc).length ? `<table class="ptable"><thead><tr><th>Plataforma</th><th style="text-align:right">Terminados disponibles</th></tr></thead><tbody>${Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`<tr><td>${esc(p)}</td><td class="n">${n}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">Marca juegos como terminados para ver el reparto por plataforma.</p>`;
   const qual = `<div class="tw"><table class="ptable"><thead><tr><th>Grupo</th><th style="text-align:right">Juegos</th><th style="text-align:right">Metacritic</th><th style="text-align:right">Backloggd</th><th style="text-align:right">Índice</th></tr></thead><tbody>${
     [["Terminados",term],["Al 100%",comp],["Tengo sin terminar",pend],["Quiero",quiero]].map(([n,a])=>`<tr><td>${n}</td><td class="n">${a.length}</td><td class="n">${avg(a,g=>g.mc)?.toFixed(1).replace(".",",")??"—"}</td><td class="n">${(v=>v!=null?fmtBL(v):"—")(avg(a,g=>g.bl))}</td><td class="n">${avg(a,g=>g.ix)?.toFixed(1).replace(".",",")??"—"}</td></tr>`).join("")}</tbody></table></div>`;
-  const li = arr => arr.length ? `<ul class="mini">${arr.map(g=>`<li><button data-goto="${g.id}">${esc(g.t)} <span class="muted">(${g.y})</span></button><span class="idx" style="font-size:18px">${g.ix.toFixed(1).replace(".",",")}</span></li>`).join("")}</ul>` : `<p class="empty">Nada aquí todavía.</p>`;
+  const li = arr => arr.length ? `<ul class="mini">${arr.map(g=>{ const lab=`${esc(g.t)}${g.y?` <span class="muted">(${g.y})</span>`:g.casa?` <span class="muted">(fuera del catálogo)</span>`:""}`;
+      return `<li>${seen.has(g.id)?`<button data-goto="${g.id}">${lab}</button>`:`<span>${lab}</span>`}<span class="idx" style="font-size:18px">${g.ix?g.ix.toFixed(1).replace(".",","):"—"}</span></li>`; }).join("")}</ul>` : `<p class="empty">Nada aquí todavía.</p>`;
   out.innerHTML = `${viewSel()}${kpis}${own?"":compareBlock(id=>effOf(ST,MYHOG,id), id=>effOf(VST,VHOG,id), who)}${own?hogarCard():""}${casaCard(st, H_, own)}
     <div class="statgrid">
       <div class="card"><h3>Por año</h3>${bars}</div>
