@@ -386,7 +386,9 @@ const CATDEF = {q:"", sort:"ix", dec:"", gen:"", pl:"", min:0, f:"all", n:100};
 if(!S.cat || typeof S.cat!=="object") S.cat = {...CATDEF};
 async function loadCat(){
   if (CAT || CAT_LOADING) return; CAT_LOADING = true;
-  try { CAT = await getJSON("data/catalogo.json"); if (HOGINFO && Array.isArray(HOGINFO.juegos)) MYHOG = matchHogar(HOGINFO.juegos); }
+  try { CAT = await getJSON("data/catalogo.json");
+    if (HOGINFO && Array.isArray(HOGINFO.juegos)) MYHOG = matchHogar(HOGINFO.juegos);
+    if (ME && VIEW!=null && VIEW!==ME.id) await loadView(VIEW, false); }
   catch(e){ CAT = {games:[], error:String(e.message||e)}; }
   CAT_LOADING = false; render();
 }
@@ -502,6 +504,7 @@ async function loadState(){
   for (const k in FIS) delete FIS[k]; Object.assign(FIS, d.fisica||{});
   if (VIEW!==ME.id) await loadView(VIEW, false);
   render();
+  if (HOGINFO && !CAT) loadCat();   // el emparejado con Hogar necesita el catálogo completo, no solo los rankings
 }
 async function loadView(id, draw=true){
   VIEW = id;
