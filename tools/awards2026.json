@@ -2,14 +2,23 @@
  "tga": {
   "date": "2026-12-10",
   "venue": "Peacock Theater, Los Angeles",
-  "nominees": null
+  "nominees": [
+   "007 First Light",
+   "CONTROL Resonant",
+   "Grand Theft Auto VI",
+   "The Legend of Zelda: Ocarina of Time",
+   "Phantom Blade Zero",
+   "Resident Evil Requiem"
+  ]
  },
  "labels": {
-  "Golden Joystick": "Golden Joystick 2026 (Ultimate Game of the Year o Juego de consola o de PC del año): nominado o ganador. Gala celebrada el 11 de noviembre."
+  "Golden Joystick": "Golden Joystick 2026 (Ultimate Game of the Year o Juego de consola o de PC del año): nominado o ganador. Gala celebrada el 11 de noviembre.",
+  "TGA": "The Game Awards 2026 – Game of the Year: nominado o ganador. Gala el 10 de diciembre."
  },
  "games": {
   "007 First Light": {
-   "Golden Joystick": "nom"
+   "Golden Joystick": "nom",
+   "TGA": "nom"
   },
   "Fire Emblem: Fortune's Weave": {
    "Golden Joystick": "nom"
@@ -33,7 +42,8 @@
    "Golden Joystick": "nom"
   },
   "Resident Evil Requiem": {
-   "Golden Joystick": "won"
+   "Golden Joystick": "won",
+   "TGA": "nom"
   },
   "SAROS": {
    "Golden Joystick": "nom"
@@ -69,29 +79,34 @@
    "Golden Joystick": "nom"
   },
   "CONTROL Resonant": {
-   "Golden Joystick": "nom"
+   "Golden Joystick": "nom",
+   "TGA": "nom"
   },
   "Dispatch": {
    "Golden Joystick": "nom"
   },
   "Phantom Blade Zero": {
-   "Golden Joystick": "nom"
+   "Golden Joystick": "nom",
+   "TGA": "nom"
   },
   "STAR WARS: Galactic Racer": {
    "Golden Joystick": "nom"
+  },
+  "Grand Theft Auto VI": {
+   "TGA": "nom"
+  },
+  "The Legend of Zelda: Ocarina of Time": {
+   "TGA": "nom"
   }
  },
  "notes": [
-  "The Game Awards 2026: 10 de diciembre en el Peacock Theater de Los Ángeles. Los nominados se anuncian el martes 17 de noviembre (18:00 hora peninsular).",
+  "The Game Awards 2026 (10 de diciembre, Peacock Theater, Los Ángeles): nominados a GOTY 007 First Light, CONTROL Resonant, Grand Theft Auto VI, Zelda: Ocarina of Time, Phantom Blade Zero y Resident Evil Requiem.",
+  "Más nominaciones en el TGA: Grand Theft Auto VI (8), CONTROL Resonant y Resident Evil Requiem (6), Phantom Blade Zero (5). La votación del público cierra el 9 de diciembre.",
+  "Otras categorías del TGA: mejor indie entre Big Walk, Cairn, Denshattack!, Mewgenics y Mina the Hollower; mejor RPG entre The Blood of Dawnwalker, Final Fantasy Resonance, Fire Emblem: Fortune's Weave, Monster Hunter Stories 3 y Trails in the Sky 2nd Chapter.",
   "Golden Joystick 2026: Resident Evil Requiem gana Ultimate Game of the Year y Juego de consola del año; Crimson Desert, Juego de PC del año.",
   "Otros Golden Joystick: Big Walk (premio de la crítica), MECCHA CHAMELEON (elección de los desarrolladores y mejor multijugador), Dispatch (narrativa y banda sonora), Valheim (mejor indie) y Capcom (estudio del año).",
+  "Grand Theft Auto VI salió el 19 de noviembre y debuta en Metacritic con 99.",
   "DICE, GDC y BAFTA premian los juegos de 2026 a principios de 2027."
  ],
- "upcoming": [
-  {
-   "t": "Grand Theft Auto VI",
-   "date": "2026-11-19",
-   "note": "Sale este jueves 19 de noviembre (confirmado por Rockstar). Entra en el plazo de The Game Awards 2026."
-  }
- ]
+ "upcoming": []
 }
